@@ -19,12 +19,11 @@ struct ClearState {
 
 
 enum class DepthTestFunc { Never, Less, Equal, LEqual };
-enum class PrimitiveType { Points, LineStrip, LineLoop, Lines, TriangleStrip, TriangleFan, Triangles };
 struct Viewport { int x=0, y=0, w=0, h=0; };
 
 struct RenderState {
 	Viewport		viewport;
-	bool			depth_test_enabled	= true;
+	bool			depth_test_enabled	= false;
 	DepthTestFunc	depth_test_func		= DepthTestFunc::LEqual;
 
 	float			line_width			= 1;
@@ -97,8 +96,8 @@ private:
 };
 
 
+enum class PrimitiveType { Points, LineStrip, LineLoop, Lines, TriangleStrip, TriangleFan, Triangles };
 enum class ComponentType { Int8, Uint8, Int16, Uint16, Int32, Uint32, Float, HalfFloat };
-
 
 
 class VertexArray {
@@ -112,7 +111,8 @@ public:
 	void set_count(int i) { _count = i; };
 	void set_primitive_type(PrimitiveType t) { _primitive_type = t; };
 
-	void set_attribute(int i, const VertexBuffer::Ptr& vb, ComponentType ct, int cc, bool normalized, int offset, int stride);
+	void set_attribute(int i, const VertexBuffer::Ptr& vb, ComponentType component_type,
+						int component_count, bool normalized, int offset, int stride);
 	void set_attribute(int i, const glm::vec3& v);
 	void set_attribute(int i, const glm::vec4& v);
 	// ...
@@ -136,6 +136,28 @@ private:
 };
 
 
+enum class WrapMode { Clamp, Repeat, ClampZero, MirrowedRepeat };
+enum class FilterMode { Linear, Nearest }; // TODO: mipmap
+
+
+class Texture2D {
+	friend class Context;
+	friend class Shader;
+public:
+	typedef std::unique_ptr<Texture2D> Ptr;
+
+
+
+	// sampler stuff
+	void set_wrap(WrapMode horiz, WrapMode vert);
+	void set_filter(FilterMode min, FilterMode mag);
+
+
+private:
+	Texture2D();
+
+	uint32_t		_handle;
+};
 
 
 class Shader {
@@ -143,17 +165,29 @@ class Shader {
 public:
 	typedef std::unique_ptr<Shader> Ptr;
 
-	enum class AttributeType { Float, Vec2, Vec3, Vec4, Mat2, Mat3, Mat4 };
+//	enum class AttributeType { Float, Vec2, Vec3, Vec4, Mat2, Mat3, Mat4 };
 
 	template<class T>
 	void set_uniform(const std::string& name, const T& value) {
 		for (auto& u : _uniforms) {
 			if (u->name == name) {
-				auto& ue = dynamic_cast<UniformExtend<T>&>(*u);
-				if (ue.value != value) {
-					ue.value = value;
-					ue.dirty = true;
+				auto* ue = dynamic_cast<UniformExtend<T>*>(u.get());
+				assert(ue);
+				if (ue->value != value) {
+					ue->value = value;
+					ue->dirty = true;
 				}
+				return;
+			}
+		}
+		assert(false);
+	}
+	void set_uniform(const std::string& name, const Texture2D::Ptr& texture) {
+		for (auto& u : _uniforms) {
+			if (u->name == name) {
+				auto* ue = dynamic_cast<UniformTexture2D*>(u.get());
+				assert(ue);
+				ue->set(texture);
 				return;
 			}
 		}
@@ -185,6 +219,20 @@ private:
 		virtual void update() const = 0;
 	};
 
+	struct UniformTexture2D : Uniform {
+		UniformTexture2D(const std::string& name, uint32_t type, int location) : Uniform(name, type, location) {}
+		void update() const override;
+//		void update() const override {
+//			if (!dirty) return;
+//			dirty = false;
+////			gl_uniform(location, value);
+//		}
+		void set(const Texture2D::Ptr& texture) {
+			handle = texture->_handle;
+		}
+		uint32_t		handle;
+	};
+
 	template <class T>
 	struct UniformExtend : Uniform {
 		UniformExtend(const std::string& name, uint32_t type, int location) : Uniform(name, type, location) {}
@@ -206,16 +254,22 @@ private:
 
 
 
-
 class Context {
 public:
 
 	bool init(int width, int height, const char* title);
 	~Context();
 
+	bool poll_event(SDL_Event& e);
+	float aspect_ratio() const { return _viewport.w / (float) _viewport.h; }
+
+
 	void clear(const ClearState& cs);
 	void draw(const RenderState& rs, const Shader::Ptr& shader, const VertexArray::Ptr& va);
 	void flip_buffers() const;
+
+
+	// NOTE: don't use std::make_unique because of private constructors
 
 	Shader::Ptr create_shader(const char* vs, const char* fs) {
 		Shader::Ptr s(new Shader());
@@ -226,26 +280,33 @@ public:
 	VertexBuffer::Ptr create_vertex_buffer(BufferHint hint) {
 		return VertexBuffer::Ptr(new VertexBuffer(hint));
 	}
+
 	IndexBuffer::Ptr create_index_buffer(BufferHint hint) {
 		return IndexBuffer::Ptr(new IndexBuffer(hint));
 	}
+
 	VertexArray::Ptr create_vertex_array() {
 		return VertexArray::Ptr(new VertexArray());
 	}
 
+	Texture2D::Ptr create_texture_2D() {
+		return Texture2D::Ptr(new Texture2D());
+	}
 
 
 private:
 
 	SDL_Window*		_window;
-	int				_width;
-	int				_height;
+	Viewport		_viewport;
 	SDL_GLContext	_gl_context;
 
 	RenderState		_render_state;
 	ClearState		_clear_state;
 	const Shader*	_shader;
 };
+
+
+extern rmw::Context context;
 
 
 }

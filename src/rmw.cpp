@@ -46,11 +46,12 @@ VertexArray::~VertexArray() {
 }
 
 
-void VertexArray::set_attribute(int i, const VertexBuffer::Ptr& vb, ComponentType ct, int cc, bool normalized, int offset, int stride) {
+void VertexArray::set_attribute(int i, const VertexBuffer::Ptr& vb, ComponentType component_type,
+								int component_count, bool normalized, int offset, int stride) {
 	glBindVertexArray(_va);
 	vb->bind();
 	glEnableVertexAttribArray(i);
-	glVertexAttribPointer(i, cc, map_to_gl(ct), normalized, stride, reinterpret_cast<void*>(offset));
+	glVertexAttribPointer(i, component_count, map_to_gl(component_type), normalized, stride, reinterpret_cast<void*>(offset));
 }
 void VertexArray::set_attribute(int i, const glm::vec3& v) {
 	glBindVertexArray(_va);
@@ -160,8 +161,9 @@ bool Shader::init(const char* vs, const char* fs) {
 		case GL_FLOAT_VEC2: u = std::make_unique<UniformExtend<glm::vec2>>(name, type, location); break;
 		case GL_FLOAT_VEC3: u = std::make_unique<UniformExtend<glm::vec3>>(name, type, location); break;
 		case GL_FLOAT_VEC4: u = std::make_unique<UniformExtend<glm::vec4>>(name, type, location); break;
-
 		case GL_FLOAT_MAT4: u = std::make_unique<UniformExtend<glm::mat4>>(name, type, location); break;
+		case GL_SAMPLER_2D: u = std::make_unique<UniformTexture2D>(name, type, location); break;
+
 		default:
 			fprintf(stderr, "Error: uniform '%s' has unknown type\n", name);
 			assert(false);
@@ -178,13 +180,12 @@ Shader::~Shader() {
 }
 
 
-// glUniform* wrapper
 void gl_uniform(int l, float v) { glUniform1f(l, v); }
 void gl_uniform(int l, const glm::vec2& v) { glUniform2fv(l, 1, &v.x); }
 void gl_uniform(int l, const glm::vec3& v) { glUniform3fv(l, 1, &v.x); }
 void gl_uniform(int l, const glm::vec4& v) { glUniform4fv(l, 1, &v.x); }
-
 void gl_uniform(int l, const glm::mat4& v) { glUniformMatrix4fv(l, 1, false, &v[0].x); }
+
 
 
 template <class T>
@@ -194,8 +195,45 @@ void Shader::UniformExtend<T>::update() const {
 	gl_uniform(location, value);
 }
 
+void Shader::UniformTexture2D::update() const {
+	int unit = location;
+	// TODO: set this via Context
+	glActiveTexture(GL_TEXTURE0 + unit);
+	glBindTexture(GL_TEXTURE_2D, handle);
+	glUniform1i(location, unit);
+}
 
 
+/*
+	// cache bound textures to minimize calls to glBindTexture()
+	// cache this variable in Context
+	int max_texture_units;
+	glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_texture_units);
+	std::vector<GLuint> bound_textures(max_texture_units);
+*/
+
+Texture2D::Texture2D() {
+
+	glGenTextures(1, &_handle);
+	glBindTexture(GL_TEXTURE_2D, _handle); // TODO: caching via Context
+
+//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	SDL_Surface* img = IMG_Load("media/wall.png");
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img->w, img->h, 0, GL_RGB, GL_UNSIGNED_BYTE, img->pixels);
+	SDL_FreeSurface(img);
+
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+//	glBindTexture(GL_TEXTURE_2D, 0);
+}
 
 
 
@@ -205,22 +243,22 @@ void Shader::UniformExtend<T>::update() const {
 
 bool Context::init(int width, int height, const char* title)
 {
-	_width = width;
-	_height = height;
+	_viewport.w = width;
+	_viewport.h = height;
 
 	SDL_Init(SDL_INIT_VIDEO);
 	IMG_Init(IMG_INIT_PNG);
 
-//	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-//	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-//	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
 	_window = SDL_CreateWindow(title,
 			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-			_width, _height,
+			_viewport.w, _viewport.h,
 			SDL_WINDOW_OPENGL /*| SDL_WINDOW_RESIZABLE*/);
 
-	SDL_GL_SetSwapInterval(1); // v-sync
+	SDL_GL_SetSwapInterval(-1); // v-sync
 	_gl_context = SDL_GL_CreateContext(_window);
 
 	glewExperimental = true;
@@ -244,6 +282,18 @@ Context::~Context()
 }
 
 
+bool Context::poll_event(SDL_Event& e) {
+	if (!SDL_PollEvent(&e)) return false;
+	if (e.type == SDL_WINDOWEVENT
+	&&  e.window.event == SDL_WINDOWEVENT_RESIZED) {
+		_viewport.w = e.window.data1;
+		_viewport.h = e.window.data2;
+	}
+
+	return true;
+}
+
+
 void Context::clear(const ClearState& cs) {
 
 	if (_clear_state.color != cs.color) {
@@ -253,10 +303,6 @@ void Context::clear(const ClearState& cs) {
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
-
-
-
-
 
 
 
@@ -276,8 +322,11 @@ void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const Verte
 			glDisable(GL_DEPTH_TEST);
 		}
 	}
-	if (memcmp(&_render_state.viewport, &rs.viewport, sizeof(Viewport)) != 0) {
-		_render_state.viewport = rs.viewport;
+
+	// only consider RenderState::viewport if it's valid
+	const Viewport& vp = rs.viewport.w == 0 ? _viewport : rs.viewport;
+	if (memcmp(&_render_state.viewport, &vp, sizeof(Viewport)) != 0) {
+		_render_state.viewport = vp;
 		glViewport( _render_state.viewport.x,
 					_render_state.viewport.y,
 					_render_state.viewport.w,
@@ -309,10 +358,12 @@ void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const Verte
 }
 
 
-
 void Context::flip_buffers() const {
 	SDL_GL_SwapWindow(_window);
 }
+
+
+rmw::Context context;
 
 
 }

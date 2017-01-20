@@ -2,19 +2,14 @@
 #include <cstdio>
 #include <cmath>
 
-
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
-
 
 #include "rmw.h"
 #include "map.h"
 #include "eye.h"
 #include "editor.h"
 
-
-rmw::Context		ctx;
-rmw::RenderState	rs;
 
 Eye		eye;
 Editor	editor;
@@ -34,7 +29,7 @@ public:
 
 	void init() {
 
-		shader = ctx.create_shader(
+		shader = rmw::context.create_shader(
 			R"(#version 330
 				layout(location = 0) in vec3 in_pos;
 				layout(location = 1) in vec4 in_color;
@@ -54,16 +49,16 @@ public:
 				in vec2 ex_uv;
 				in vec4 ex_color;
 				in float ex_depth;
-//				uniform sampler2D tex;
+				uniform sampler2D tex;
 				out vec4 out_color;
 				void main() {
-					vec4 c = ex_color;
-//					vec4 c = texture(tex, ex_uv) * ex_color;
+//					vec4 c = ex_color;
+					vec4 c = texture(tex, ex_uv) * ex_color;
 					out_color = vec4(c.rgb * pow(0.9, ex_depth), c.a);
 				})");
 
-		vertex_buffer = ctx.create_vertex_buffer(rmw::BufferHint::StreamDraw);
-		vertex_array = ctx.create_vertex_array();
+		vertex_buffer = rmw::context.create_vertex_buffer(rmw::BufferHint::StreamDraw);
+		vertex_array = rmw::context.create_vertex_array();
 		vertex_array->set_primitive_type(rmw::PrimitiveType::Triangles);
 		vertex_array->set_attribute(0, vertex_buffer, rmw::ComponentType::Float, 3, false,  0, sizeof(Vert));
 		vertex_array->set_attribute(2, vertex_buffer, rmw::ComponentType::Float, 2, false, 12, sizeof(Vert));
@@ -72,7 +67,9 @@ public:
 //		tex_wall = gl.load_texture("media/wall.png");
 //		tex_ceil = gl.load_texture("media/ceil.png");
 //		tex_floor = gl.load_texture("media/floor.png");
-//		glGenBuffers(1, &vb);
+
+
+		texture = rmw::context.create_texture_2D();
 	}
 
 	void draw() {
@@ -133,28 +130,33 @@ public:
 		}
 
 
+		glm::mat4 mat_perspective = glm::perspective(
+			glm::radians(60.0f),
+			rmw::context.aspect_ratio(),
+			0.1f, 100.0f);
 
-//		glm::mat4 mat_perspective = glm::perspective(glm::radians(60.0f), width / (float) height, 0.1f, 100.0f);
-		glm::mat4 mat_perspective = glm::perspective(glm::radians(60.0f), 4 / 3.0f, 0.1f, 100.0f);
 		shader->set_uniform("mvp", mat_perspective * eye.get_view_mtx());
+		shader->set_uniform("tex", texture);
 
 
+		rmw::RenderState rs;
+		rs.depth_test_enabled = true;
 
 
 		vertex_buffer->init_data(wall_verts);
 		vertex_array->set_count(wall_verts.size());
 		vertex_array->set_attribute(1, glm::vec4(1, 1, 1, 1));
-		ctx.draw(rs, shader, vertex_array);
+		rmw::context.draw(rs, shader, vertex_array);
 
 		vertex_buffer->init_data(ceil_verts);
 		vertex_array->set_count(ceil_verts.size());
 		vertex_array->set_attribute(1, glm::vec4(0.5, 0.5, 0.5, 1));
-		ctx.draw(rs, shader, vertex_array);
+		rmw::context.draw(rs, shader, vertex_array);
 
 		vertex_buffer->init_data(floor_verts);
 		vertex_array->set_count(floor_verts.size());
 		vertex_array->set_attribute(1, glm::vec4(1, 1, 0.5, 1));
-		ctx.draw(rs, shader, vertex_array);
+		rmw::context.draw(rs, shader, vertex_array);
 	}
 
 
@@ -193,24 +195,24 @@ private:
 	rmw::VertexBuffer::Ptr	vertex_buffer;
 	rmw::VertexArray::Ptr	vertex_array;
 
+	rmw::Texture2D::Ptr		texture;
+
 } renderer;
 
 
 
 int main(int argc, char** argv) {
-	ctx.init(800, 600, "portal");
+	rmw::context.init(800, 600, "portal");
 
 
 	renderer.init();
 
-	rs.line_width = 2.0;
-	rs.depth_test_enabled = true;
 
 
 	bool running = true;
 	while (running) {
 		SDL_Event e;
-		while (SDL_PollEvent(&e)){
+		while (rmw::context.poll_event(e)) {
 			switch (e.type) {
 
 			case SDL_QUIT:
@@ -221,16 +223,6 @@ int main(int argc, char** argv) {
 				if (e.key.keysym.scancode == SDL_SCANCODE_ESCAPE) running = false;
 				break;
 
-			case SDL_WINDOWEVENT:
-				switch (e.window.event) {
-				case SDL_WINDOWEVENT_RESIZED:
-					rs.viewport.w = e.window.data1;
-					rs.viewport.h = e.window.data2;
-					break;
-				default: break;
-				}
-				break;
-
 			default: break;
 			}
 		}
@@ -238,15 +230,13 @@ int main(int argc, char** argv) {
 
 
 		eye.update();
-		ctx.clear(rmw::ClearState { { 0.1, 0.1, 0.1, 1 } });
+		rmw::context.clear(rmw::ClearState { { 0.1, 0.1, 0.1, 1 } });
 
 		renderer.draw();
 
 		editor.draw();
 
-		ctx.flip_buffers();
+		rmw::context.flip_buffers();
 	}
 
 }
-
-
