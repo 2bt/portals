@@ -154,7 +154,7 @@ public:
 
 
 private:
-	Texture2D();
+	Texture2D(SDL_Surface* img);
 
 	uint32_t		_handle;
 };
@@ -271,27 +271,25 @@ public:
 
 	// NOTE: don't use std::make_unique because of private constructors
 
-	Shader::Ptr create_shader(const char* vs, const char* fs) {
+	Shader::Ptr create_shader(const char* vs, const char* fs) const {
 		Shader::Ptr s(new Shader());
 		if (!s->init(vs, fs)) return nullptr;
 		return s;
 	}
 
-	VertexBuffer::Ptr create_vertex_buffer(BufferHint hint) {
+	VertexBuffer::Ptr create_vertex_buffer(BufferHint hint) const {
 		return VertexBuffer::Ptr(new VertexBuffer(hint));
 	}
 
-	IndexBuffer::Ptr create_index_buffer(BufferHint hint) {
+	IndexBuffer::Ptr create_index_buffer(BufferHint hint) const {
 		return IndexBuffer::Ptr(new IndexBuffer(hint));
 	}
 
-	VertexArray::Ptr create_vertex_array() {
+	VertexArray::Ptr create_vertex_array() const {
 		return VertexArray::Ptr(new VertexArray());
 	}
 
-	Texture2D::Ptr create_texture_2D() {
-		return Texture2D::Ptr(new Texture2D());
-	}
+	Texture2D::Ptr create_texture_2D(const char* file) const;
 
 
 private:

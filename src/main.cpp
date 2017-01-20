@@ -52,7 +52,6 @@ public:
 				uniform sampler2D tex;
 				out vec4 out_color;
 				void main() {
-//					vec4 c = ex_color;
 					vec4 c = texture(tex, ex_uv) * ex_color;
 					out_color = vec4(c.rgb * pow(0.9, ex_depth), c.a);
 				})");
@@ -63,13 +62,9 @@ public:
 		vertex_array->set_attribute(0, vertex_buffer, rmw::ComponentType::Float, 3, false,  0, sizeof(Vert));
 		vertex_array->set_attribute(2, vertex_buffer, rmw::ComponentType::Float, 2, false, 12, sizeof(Vert));
 
-
-//		tex_wall = gl.load_texture("media/wall.png");
-//		tex_ceil = gl.load_texture("media/ceil.png");
-//		tex_floor = gl.load_texture("media/floor.png");
-
-
-		texture = rmw::context.create_texture_2D();
+		tex_wall  = rmw::context.create_texture_2D("media/wall.png");
+		tex_floor = rmw::context.create_texture_2D("media/floor.png");
+		tex_ceil  = rmw::context.create_texture_2D("media/ceil.png");
 	}
 
 	void draw() {
@@ -136,7 +131,7 @@ public:
 			0.1f, 100.0f);
 
 		shader->set_uniform("mvp", mat_perspective * eye.get_view_mtx());
-		shader->set_uniform("tex", texture);
+		vertex_array->set_attribute(1, glm::vec4(1, 1, 1, 1));
 
 
 		rmw::RenderState rs;
@@ -145,17 +140,17 @@ public:
 
 		vertex_buffer->init_data(wall_verts);
 		vertex_array->set_count(wall_verts.size());
-		vertex_array->set_attribute(1, glm::vec4(1, 1, 1, 1));
+		shader->set_uniform("tex", tex_wall);
 		rmw::context.draw(rs, shader, vertex_array);
 
 		vertex_buffer->init_data(ceil_verts);
 		vertex_array->set_count(ceil_verts.size());
-		vertex_array->set_attribute(1, glm::vec4(0.5, 0.5, 0.5, 1));
+		shader->set_uniform("tex", tex_ceil);
 		rmw::context.draw(rs, shader, vertex_array);
 
 		vertex_buffer->init_data(floor_verts);
 		vertex_array->set_count(floor_verts.size());
-		vertex_array->set_attribute(1, glm::vec4(1, 1, 0.5, 1));
+		shader->set_uniform("tex", tex_floor);
 		rmw::context.draw(rs, shader, vertex_array);
 	}
 
@@ -195,7 +190,9 @@ private:
 	rmw::VertexBuffer::Ptr	vertex_buffer;
 	rmw::VertexArray::Ptr	vertex_array;
 
-	rmw::Texture2D::Ptr		texture;
+	rmw::Texture2D::Ptr		tex_wall;
+	rmw::Texture2D::Ptr		tex_ceil;
+	rmw::Texture2D::Ptr		tex_floor;
 
 } renderer;
 

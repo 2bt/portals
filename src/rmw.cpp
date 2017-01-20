@@ -212,7 +212,7 @@ void Shader::UniformTexture2D::update() const {
 	std::vector<GLuint> bound_textures(max_texture_units);
 */
 
-Texture2D::Texture2D() {
+Texture2D::Texture2D(SDL_Surface* img) {
 
 	glGenTextures(1, &_handle);
 	glBindTexture(GL_TEXTURE_2D, _handle); // TODO: caching via Context
@@ -226,7 +226,6 @@ Texture2D::Texture2D() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-	SDL_Surface* img = IMG_Load("media/wall.png");
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img->w, img->h, 0, GL_RGB, GL_UNSIGNED_BYTE, img->pixels);
 	SDL_FreeSurface(img);
 
@@ -362,6 +361,11 @@ void Context::flip_buffers() const {
 	SDL_GL_SwapWindow(_window);
 }
 
+Texture2D::Ptr Context::create_texture_2D(const char* file) const {
+	SDL_Surface* img = IMG_Load(file);
+	if (!img) return nullptr;
+	return Texture2D::Ptr(new Texture2D(img));
+}
 
 rmw::Context context;
 
