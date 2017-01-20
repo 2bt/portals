@@ -196,6 +196,8 @@ void Shader::UniformExtend<T>::update() const {
 }
 
 void Shader::UniformTexture2D::update() const {
+	// NOTE: this is hacky
+	// but what's the best way to do this?
 	int unit = location;
 	// TODO: set this via Context
 	glActiveTexture(GL_TEXTURE0 + unit);
@@ -205,13 +207,13 @@ void Shader::UniformTexture2D::update() const {
 
 
 /*
+	// TODO:
 	// cache bound textures to minimize calls to glBindTexture()
 	// cache this variable in Context
 	int max_texture_units;
 	glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_texture_units);
 	std::vector<GLuint> bound_textures(max_texture_units);
 */
-
 Texture2D::Texture2D(SDL_Surface* img) {
 
 	glGenTextures(1, &_handle);
@@ -361,12 +363,15 @@ void Context::flip_buffers() const {
 	SDL_GL_SwapWindow(_window);
 }
 
+
 Texture2D::Ptr Context::create_texture_2D(const char* file) const {
 	SDL_Surface* img = IMG_Load(file);
 	if (!img) return nullptr;
 	return Texture2D::Ptr(new Texture2D(img));
 }
 
+
+// the singleton
 rmw::Context context;
 
 

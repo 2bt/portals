@@ -4,7 +4,16 @@
 
 
 
+void Editor::init() {
+	m_renderer.init();
+}
+
+
 void Editor::draw() {
+
+	static int i = 0;
+	if (!i++) init();
+
 
 	float scale = 10;
 	auto eye_pos = eye.get_pos();
@@ -14,6 +23,9 @@ void Editor::draw() {
 	float co = cosf(eye.get_ang_y());
 	float si = sinf(eye.get_ang_y());
 
+
+
+
 /*
 	glDisable(GL_DEPTH_TEST);
 	glEnable(GL_LINE_SMOOTH);
@@ -22,9 +34,8 @@ void Editor::draw() {
 */
 
 	// draw camera
-//	gl.set_color(1, 1, 1);
-//	gl.line(0, 0, -si * scale, -co * scale);
-
+	m_renderer.set_color(255, 255, 0);
+	m_renderer.line(0, 0, -si * scale, -co * scale);
 
 
 	for (auto& s : map.sectors) {
@@ -38,11 +49,13 @@ void Editor::draw() {
 			auto p2 = w2.pos * -scale + offset;
 
 			// full wall
-//			if (w1.next_sector == -1) gl.set_color(0.75, 0.75, 0.75);
-//			else gl.set_color(0.75, 0, 0);
-//			gl.line(p1.x, -p1.y, p2.x, -p2.y);
+			if (w1.next_sector == -1) m_renderer.set_color(200, 200, 200);
+			else m_renderer.set_color(200, 0, 0);
+			m_renderer.line(p1.x, -p1.y, p2.x, -p2.y);
 
 		}
 	}
 
+
+	m_renderer.flush();
 }

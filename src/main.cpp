@@ -203,6 +203,7 @@ int main(int argc, char** argv) {
 
 
 	renderer.init();
+	editor.init();
 
 
 
