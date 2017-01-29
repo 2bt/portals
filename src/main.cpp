@@ -13,17 +13,23 @@
 
 Eye		eye;
 Editor	editor;
-Map		map;
 
+Renderer2D	renderer2D;
 
 
 class MapRenderer {
 public:
 
 	struct Vert {
-		glm::vec3	pos;
-		glm::vec2	uv;
-		Vert(glm::vec3 pos, glm::vec2 uv) : pos(pos), uv(uv) {}
+		glm::vec3		pos;
+		glm::vec2		uv;
+		glm::u8vec4		col;
+
+		Vert(	const glm::vec3& pos,
+				const glm::vec2& uv,
+				const glm::u8vec4& col = glm::u8vec4(255, 255, 255, 255))
+			: pos(pos), uv(uv), col(col)
+		{}
 	};
 
 
@@ -32,8 +38,8 @@ public:
 		shader = rmw::context.create_shader(
 			R"(#version 330
 				layout(location = 0) in vec3 in_pos;
-				layout(location = 1) in vec4 in_color;
-				layout(location = 2) in vec2 in_uv;
+				layout(location = 1) in vec2 in_uv;
+				layout(location = 2) in vec4 in_color;
 
 				uniform mat4 mvp;
 				out vec2 ex_uv;
@@ -59,8 +65,9 @@ public:
 		vertex_buffer = rmw::context.create_vertex_buffer(rmw::BufferHint::StreamDraw);
 		vertex_array = rmw::context.create_vertex_array();
 		vertex_array->set_primitive_type(rmw::PrimitiveType::Triangles);
-		vertex_array->set_attribute(0, vertex_buffer, rmw::ComponentType::Float, 3, false,  0, sizeof(Vert));
-		vertex_array->set_attribute(2, vertex_buffer, rmw::ComponentType::Float, 2, false, 12, sizeof(Vert));
+		vertex_array->set_attribute(0, vertex_buffer, rmw::ComponentType::Float, 3, false, 0, sizeof(Vert));
+		vertex_array->set_attribute(1, vertex_buffer, rmw::ComponentType::Float, 2, false, 12, sizeof(Vert));
+		vertex_array->set_attribute(2, vertex_buffer, rmw::ComponentType::Uint8, 4, true, 20, sizeof(Vert));
 
 		tex_wall  = rmw::context.create_texture_2D("media/wall.png");
 		tex_floor = rmw::context.create_texture_2D("media/floor.png");
@@ -73,13 +80,20 @@ public:
 		floor_verts.clear();
 		ceil_verts.clear();
 
-		for (auto& s : map.sectors) {
+		for (int i = 0; i < (int) map.sectors.size(); ++i) {
+			Sector& sector = map.sectors[i];
 
+
+			glm::u8vec4 col(255, 255, 255, 255);
+			if (i == eye.get_location().sector) {
+				col.g = 100;
+				col.b = 100;
+			}
 
 			// walls
-			for (int i = 0; i < s.wall_count; i++) {
+			for (int j = 0; j < sector.wall_count; ++j) {
 
-				auto& w1 = map.walls[s.wall_index + i];
+				auto& w1 = map.walls[sector.wall_index + j];
 				auto& w2 = map.walls[w1.other_point];
 				auto p1 = w1.pos;
 				auto p2 = w2.pos;
@@ -87,20 +101,20 @@ public:
 
 				// full wall
 				if (w1.next_sector == -1) {
-					wall(p1.x, s.floor_height, p1.y, p2.x, s.ceil_height, p2.y);
+					wall(p1.x, sector.floor_height, p1.y, p2.x, sector.ceil_height, p2.y);
 					continue;
 				}
 
 				auto& s2 = map.sectors[w1.next_sector];
 
 				// floor wall
-				if (s.floor_height < s2.floor_height) {
-					wall(p1.x, s.floor_height, p1.y, p2.x, s2.floor_height, p2.y);
+				if (sector.floor_height < s2.floor_height) {
+					wall(p1.x, sector.floor_height, p1.y, p2.x, s2.floor_height, p2.y);
 				}
 
 				// ceil wall
-				if (s.ceil_height > s2.ceil_height) {
-					wall(p1.x, s2.ceil_height, p1.y, p2.x, s.ceil_height, p2.y);
+				if (sector.ceil_height > s2.ceil_height) {
+					wall(p1.x, s2.ceil_height, p1.y, p2.x, sector.ceil_height, p2.y);
 				}
 
 
@@ -108,19 +122,19 @@ public:
 
 
 			// floor and ceiling
-			auto p1 = map.walls[s.wall_index].pos;
+			auto p1 = map.walls[sector.wall_index].pos;
 
-			for (int i = 2; i < s.wall_count; i++) {
-				auto p2 = map.walls[s.wall_index + i - 1].pos;
-				auto p3 = map.walls[s.wall_index + i].pos;
+			for (int i = 2; i < sector.wall_count; ++i) {
+				auto p2 = map.walls[sector.wall_index + i - 1].pos;
+				auto p3 = map.walls[sector.wall_index + i].pos;
 
-				floor_verts.emplace_back(glm::vec3(p1.x, s.floor_height, p1.y), p1);
-				floor_verts.emplace_back(glm::vec3(p2.x, s.floor_height, p2.y), p2);
-				floor_verts.emplace_back(glm::vec3(p3.x, s.floor_height, p3.y), p3);
+				floor_verts.emplace_back(glm::vec3(p1.x, sector.floor_height, p1.y), p1, col);
+				floor_verts.emplace_back(glm::vec3(p2.x, sector.floor_height, p2.y), p2, col);
+				floor_verts.emplace_back(glm::vec3(p3.x, sector.floor_height, p3.y), p3, col);
 
-				ceil_verts.emplace_back(glm::vec3(p2.x, s.ceil_height, p2.y), p2);
-				ceil_verts.emplace_back(glm::vec3(p1.x, s.ceil_height, p1.y), p1);
-				ceil_verts.emplace_back(glm::vec3(p3.x, s.ceil_height, p3.y), p3);
+				ceil_verts.emplace_back(glm::vec3(p2.x, sector.ceil_height, p2.y), p2);
+				ceil_verts.emplace_back(glm::vec3(p1.x, sector.ceil_height, p1.y), p1);
+				ceil_verts.emplace_back(glm::vec3(p3.x, sector.ceil_height, p3.y), p3);
 			}
 		}
 
@@ -131,7 +145,6 @@ public:
 			0.1f, 100.0f);
 
 		shader->set_uniform("mvp", mat_perspective * eye.get_view_mtx());
-		vertex_array->set_attribute(1, glm::vec4(1, 1, 1, 1));
 
 
 		rmw::RenderState rs;
@@ -202,9 +215,10 @@ int main(int argc, char** argv) {
 	rmw::context.init(800, 600, "portal");
 
 
-	renderer.init();
-	editor.init();
+	renderer2D.init();
 
+
+	renderer.init();
 
 
 	bool running = true;

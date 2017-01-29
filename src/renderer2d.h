@@ -104,3 +104,6 @@ private:
 	std::array<glm::mat3x2, 16>	m_transforms;
 	size_t						m_transform_index = 0;
 };
+
+
+extern Renderer2D	renderer2D;

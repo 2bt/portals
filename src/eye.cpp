@@ -2,10 +2,17 @@
 
 
 #include <algorithm>
-#include <glm/gtc/matrix_transform.hpp>
+//#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
 #include <SDL2/SDL.h>
 
 
+Eye::Eye() {
+	loc.pos = { 3, 1.5, 7 };
+	loc.sector = map.find_sector(loc.pos);
+	ang_x = 0;
+	ang_y = 0;
+}
 
 
 void Eye::update() {
@@ -25,10 +32,14 @@ void Eye::update() {
 	float cx = cosf(ang_x);
 	float sx = sinf(ang_x);
 
-	pos.y += y * cx + z * sx;
-	pos.x += x * cy - z * sy * cx + sy * sx * y;
-	pos.z += x * sy + z * cy * cx - cy * sx * y;
+	glm::vec3 mov = {
+		x * cy - z * sy * cx + sy * sx * y,
+		y * cx + z * sx,
+		x * sy + z * cy * cx - cy * sx * y,
+	};
 
+
+	map.clip_move(loc, mov);
 
 //	printf("%f %f %f %f %f\n", pos.x, pos.y, pos.z, ang_x, ang_y);
 }
@@ -37,6 +48,6 @@ void Eye::update() {
 glm::mat4x4 Eye::get_view_mtx() const {
 	return	glm::rotate<float>(ang_x, glm::vec3(1, 0, 0)) *
 			glm::rotate<float>(ang_y, glm::vec3(0, 1, 0)) *
-			glm::translate(-pos);
+			glm::translate(-loc.pos);
 }
 
