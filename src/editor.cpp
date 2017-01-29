@@ -7,23 +7,48 @@
 void Editor::init() {
 	m_renderer.init();
 }
+void Editor::mouse_motion(const SDL_MouseMotionEvent& motion) {
+	if (motion.state & SDL_BUTTON_LMASK) {
+		m_scroll += glm::vec2(motion.xrel, motion.yrel);
+
+	}
+}
+void Editor::mouse_up(const SDL_MouseButtonEvent& button) {
+}
+void Editor::mouse_down(const SDL_MouseButtonEvent& button) {
+}
+void Editor::mouse_wheel(const SDL_MouseWheelEvent& wheel) {
+	m_zoom *= powf(1.1, wheel.y);
+}
 
 
 void Editor::draw() {
 
-	static int i = 0;
-	if (!i++) init();
+	int x, y;
+	SDL_GetMouseState(&x, &y);
+
+	m_renderer.origin();
+	m_renderer.translate(rmw::context.get_width() / 2, rmw::context.get_height() / 2);
+	m_renderer.scale(m_zoom);
+	m_renderer.translate(m_scroll);
 
 
-	float scale = 10;
-	auto eye_pos = eye.get_pos();
-	auto offset = glm::vec2(eye_pos.x, eye_pos.z) * scale;
 
 
-	float co = cosf(eye.get_ang_y());
-	float si = sinf(eye.get_ang_y());
-
-
+	// draw player
+	{
+		glm::vec2 p(eye.get_pos().x, eye.get_pos().z);
+		float co = cosf(eye.get_ang_y());
+		float si = sinf(eye.get_ang_y());
+		glm::mat2x2 m = { {  co,  si }, { -si,  co }, };
+		glm::vec2 p1 = m * glm::vec2( 0.0, -0.6) + p;
+		glm::vec2 p2 = m * glm::vec2( 0.3,  0.2) + p;
+		glm::vec2 p3 = m * glm::vec2(-0.3,  0.2) + p;
+		m_renderer.set_color(255, 255, 0);
+		m_renderer.line(p1, p2);
+		m_renderer.line(p2, p3);
+		m_renderer.line(p3, p1);
+	}
 
 
 /*
@@ -33,25 +58,16 @@ void Editor::draw() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 */
 
-	// draw camera
-	m_renderer.set_color(255, 255, 0);
-	m_renderer.line(0, 0, -si * scale, -co * scale);
-
 
 	for (auto& s : map.sectors) {
-
-
 		for (int i = 0; i < s.wall_count; i++) {
-
 			auto& w1 = map.walls[s.wall_index + i];
 			auto& w2 = map.walls[w1.other_point];
-			auto p1 = w1.pos * -scale + offset;
-			auto p2 = w2.pos * -scale + offset;
 
 			// full wall
 			if (w1.next_sector == -1) m_renderer.set_color(200, 200, 200);
 			else m_renderer.set_color(200, 0, 0);
-			m_renderer.line(p1.x, -p1.y, p2.x, -p2.y);
+			m_renderer.line(w1.pos, w2.pos);
 
 		}
 	}

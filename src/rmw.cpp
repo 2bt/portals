@@ -157,7 +157,7 @@ bool Shader::init(const char* vs, const char* fs) {
 		int location = glGetUniformLocation(_program, name);
 		Uniform::Ptr u;
 		switch (type) {
-		case GL_FLOAT:		u = std::make_unique<UniformExtend<float    >>(name, type, location); break;
+		case GL_FLOAT:		u = std::make_unique<UniformExtend<float>>(name, type, location); break;
 		case GL_FLOAT_VEC2: u = std::make_unique<UniformExtend<glm::vec2>>(name, type, location); break;
 		case GL_FLOAT_VEC3: u = std::make_unique<UniformExtend<glm::vec3>>(name, type, location); break;
 		case GL_FLOAT_VEC4: u = std::make_unique<UniformExtend<glm::vec4>>(name, type, location); break;
@@ -229,7 +229,6 @@ Texture2D::Texture2D(SDL_Surface* img) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img->w, img->h, 0, GL_RGB, GL_UNSIGNED_BYTE, img->pixels);
-	SDL_FreeSurface(img);
 
 	glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -350,7 +349,8 @@ void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const Verte
 	glBindVertexArray(va->_va);
 
 	if (va->_indexed) {
-		glDrawElements(map_to_gl(va->_primitive_type), va->_count, GL_UNSIGNED_INT, reinterpret_cast<void*>(va->_first));
+		glDrawElements(map_to_gl(va->_primitive_type), va->_count, GL_UNSIGNED_INT,
+						reinterpret_cast<void*>(va->_first));
 	}
 	else {
 		glDrawArrays(map_to_gl(va->_primitive_type), va->_first, va->_count);
@@ -367,7 +367,9 @@ void Context::flip_buffers() const {
 Texture2D::Ptr Context::create_texture_2D(const char* file) const {
 	SDL_Surface* img = IMG_Load(file);
 	if (!img) return nullptr;
-	return Texture2D::Ptr(new Texture2D(img));
+	Texture2D::Ptr tex(new Texture2D(img));
+	SDL_FreeSurface(img);
+	return tex;
 }
 
 

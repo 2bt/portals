@@ -261,7 +261,10 @@ public:
 	~Context();
 
 	bool poll_event(SDL_Event& e);
-	float aspect_ratio() const { return _viewport.w / (float) _viewport.h; }
+
+	int get_width()  const { return _viewport.w; }
+	int get_height() const { return _viewport.h; }
+	float get_aspect_ratio() const { return _viewport.w / (float) _viewport.h; }
 
 
 	void clear(const ClearState& cs);

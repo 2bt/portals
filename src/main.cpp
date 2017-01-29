@@ -127,7 +127,7 @@ public:
 
 		glm::mat4 mat_perspective = glm::perspective(
 			glm::radians(60.0f),
-			rmw::context.aspect_ratio(),
+			rmw::context.get_aspect_ratio(),
 			0.1f, 100.0f);
 
 		shader->set_uniform("mvp", mat_perspective * eye.get_view_mtx());
@@ -219,6 +219,22 @@ int main(int argc, char** argv) {
 
 			case SDL_KEYDOWN:
 				if (e.key.keysym.scancode == SDL_SCANCODE_ESCAPE) running = false;
+				break;
+
+			case SDL_MOUSEMOTION:
+				editor.mouse_motion(e.motion);
+				break;
+
+			case SDL_MOUSEBUTTONUP:
+				editor.mouse_up(e.button);
+				break;
+
+			case SDL_MOUSEBUTTONDOWN:
+				editor.mouse_down(e.button);
+				break;
+
+			case SDL_MOUSEWHEEL:
+				editor.mouse_wheel(e.wheel);
 				break;
 
 			default: break;
