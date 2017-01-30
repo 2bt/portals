@@ -1,7 +1,13 @@
 #include "map.h"
 
+// for debuging
+#include "renderer2d.h"
+
 #include <cstdio>
 #include <glm/gtx/norm.hpp>
+#include <set>
+#include <queue>
+
 
 Map::Map() {
 
@@ -28,6 +34,7 @@ Map::Map() {
 
 
 int Map::find_sector(const glm::vec3& pos) const {
+	// TODO
 
 
 	return 0;
@@ -36,36 +43,75 @@ int Map::find_sector(const glm::vec3& pos) const {
 void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 
 	float radius = 1.0;
-	float floor_dist = 2.0;
+	float floor_dist = 1.0;
 	float ceil_dist = 0.5;
-
 
 	loc.pos += mov;
 
-	const Sector& s = map.sectors[loc.sector];
+	// 2d position
 	glm::vec2 pos(loc.pos.x, loc.pos.z);
 
+	std::set<int> visited;
+	std::queue<int> todo;
+	todo.push(loc.sector);
 
-	if (loc.pos.y - floor_dist < s.floor_height)	loc.pos.y = s.floor_height + floor_dist;
-	if (loc.pos.y + ceil_dist > s.ceil_height)		loc.pos.y = s.ceil_height - ceil_dist;
+
+	while (!todo.empty()) {
+		int nr = todo.front();
+		todo.pop();
+		visited.insert(nr);
+		const Sector& sector = map.sectors[nr];
+
+		// clamp height
+		if (loc.pos.y - floor_dist < sector.floor_height)	loc.pos.y = sector.floor_height + floor_dist;
+		if (loc.pos.y + ceil_dist > sector.ceil_height)		loc.pos.y = sector.ceil_height - ceil_dist;
 
 
-	for (int j = 0; j < s.wall_count; ++j) {
-		const Wall& w1 = walls[s.wall_index + j];
-		const Wall& w2 = walls[w1.other_point];
+		for (int j = 0; j < sector.wall_count; ++j) {
+			const Wall& wall = walls[sector.wall_index + j];
+			glm::vec2 ww = walls[wall.other_point].pos - wall.pos;
+			glm::vec2 pw = pos - wall.pos;
 
-		glm::vec2 ww = w2.pos - w1.pos;
-		glm::vec2 norm = glm::normalize(glm::vec2(-ww.y, ww.x));
-		glm::vec2 pw = w1.pos - pos;
-		float dst = glm::dot(norm, pw);
-		if (dst < radius) {
+			float u = glm::dot(pw, ww) / glm::length2(ww);
+			u = std::max(0.0f, std::min(1.0f, u));
+			glm::vec2 p = wall.pos + ww * u;
+			glm::vec2 normal = pos - p;
+			float dst = glm::length(normal);
+			if (dst < radius) {
 
-			loc.pos.x -= norm.x * (radius - dst);
-			loc.pos.z -= norm.y * (radius - dst);
+				renderer2D.line(p, pos);
+
+				glm::vec2 push = normal * (radius / dst - 1);
+
+				if (wall.next_sector == -1) {
+					// wall
+					pos += push;
+				}
+				else {
+					// portal
+					const Sector& s = sectors[wall.next_sector];
+
+					if (loc.pos.y - floor_dist < s.floor_height
+					||  loc.pos.y + ceil_dist > s.ceil_height) {
+						pos += push;
+					}
+					else {
+
+						if (visited.count(wall.next_sector) == 0) {
+							todo.push(wall.next_sector);
+							float cross = glm::dot(glm::vec2(ww.y, -ww.x), pw);
+							if (cross < 0) loc.sector = wall.next_sector;
+						}
+					}
+
+				}
+			}
 		}
 
 	}
 
+	loc.pos.x = pos.x;
+	loc.pos.z = pos.y;
 }
 
 

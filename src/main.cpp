@@ -257,8 +257,10 @@ int main(int argc, char** argv) {
 
 
 
-		eye.update();
 		rmw::context.clear(rmw::ClearState { { 0.1, 0.1, 0.1, 1 } });
+
+		// move player
+		eye.update();
 
 		renderer.draw();
 
