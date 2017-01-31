@@ -27,8 +27,8 @@ Map::Map() {
 	};
 
 	sectors = {
-		{ 0, 5, 	-2, 3 },
-		{ 5, 5,     -1, 7 }
+		{ 0, 5,	-2, 3 },
+		{ 5, 5,	-1, 7 }
 	};
 }
 
@@ -48,12 +48,11 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 	float ceil_dist = 0.5;
 
 
-   // ignore height movement
-	loc.pos.x += mov.x;
-	loc.pos.z += mov.z;
-
+	// ignore height movement
 	std::vector<int> visited;
 	std::queue<int> todo({ loc.sector });
+	loc.pos.x += mov.x;
+	loc.pos.z += mov.z;
 	glm::vec2 pos(loc.pos.x, loc.pos.z);
 	while (!todo.empty()) {
 		int nr = todo.front();
@@ -73,7 +72,7 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 			float dst = glm::length(normal);
 			if (dst < radius) {
 
-            // DEBUG
+				// DEBUG
 				renderer2D.line(p, pos);
 
 				normal *= radius / dst - 1;
@@ -94,7 +93,7 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 						if (std::find(visited.begin(), visited.end(), wall.next_sector) == visited.end()) {
 							todo.push(wall.next_sector);
 
-                     // have we passed through the portal?
+							// have we passed through the portal?
 							float cross = glm::dot(glm::vec2(ww.y, -ww.x), pw);
 							if (cross < 0) loc.sector = wall.next_sector;
 						}
@@ -103,21 +102,20 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 			}
 		}
 	}
+	loc.pos.x = pos.x;
+	loc.pos.z = pos.y;
 
-   // handle height
-   loc.pos.y += mov.y;
-   for (int nr : visited) {
+	// handle height
+	loc.pos.y += mov.y;
+	for (int nr : visited) {
 		const Sector& sector = map.sectors[nr];
 		// clamp height
 		if (loc.pos.y - floor_dist < sector.floor_height)	loc.pos.y = sector.floor_height + floor_dist;
 		if (loc.pos.y + ceil_dist > sector.ceil_height)		loc.pos.y = sector.ceil_height - ceil_dist;
-   }
+	}
 
 
-	loc.pos.x = pos.x;
-	loc.pos.z = pos.y;
 }
-
 
 
 Map map;
