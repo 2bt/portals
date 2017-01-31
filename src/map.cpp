@@ -40,30 +40,26 @@ int Map::find_sector(const glm::vec3& pos) const {
 	return 0;
 }
 
+
 void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 
-	float radius = 1.0;
-	float floor_dist = 1.0;
+	float radius = 0.8;
+	float floor_dist = 1.5;
 	float ceil_dist = 0.5;
 
-	loc.pos += mov;
 
-	// 2d position
-	glm::vec2 pos(loc.pos.x, loc.pos.z);
+   // ignore height movement
+	loc.pos.x += mov.x;
+	loc.pos.z += mov.z;
 
 	std::vector<int> visited;
 	std::queue<int> todo({ loc.sector });
-
+	glm::vec2 pos(loc.pos.x, loc.pos.z);
 	while (!todo.empty()) {
 		int nr = todo.front();
 		todo.pop();
 		visited.push_back(nr);
 		const Sector& sector = map.sectors[nr];
-
-		// clamp height
-		if (loc.pos.y - floor_dist < sector.floor_height)	loc.pos.y = sector.floor_height + floor_dist;
-		if (loc.pos.y + ceil_dist > sector.ceil_height)		loc.pos.y = sector.ceil_height - ceil_dist;
-
 
 		for (int j = 0; j < sector.wall_count; ++j) {
 			const Wall& wall = walls[sector.wall_index + j];
@@ -77,13 +73,14 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 			float dst = glm::length(normal);
 			if (dst < radius) {
 
+            // DEBUG
 				renderer2D.line(p, pos);
 
-				glm::vec2 push = normal * (radius / dst - 1);
+				normal *= radius / dst - 1;
 
 				if (wall.next_sector == -1) {
 					// wall
-					pos += push;
+					pos += normal;
 				}
 				else {
 					// portal
@@ -91,22 +88,31 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 
 					if (loc.pos.y - floor_dist < s.floor_height
 					||  loc.pos.y + ceil_dist > s.ceil_height) {
-						pos += push;
+						pos += normal;
 					}
 					else {
-
 						if (std::find(visited.begin(), visited.end(), wall.next_sector) == visited.end()) {
 							todo.push(wall.next_sector);
+
+                     // have we passed through the portal?
 							float cross = glm::dot(glm::vec2(ww.y, -ww.x), pw);
 							if (cross < 0) loc.sector = wall.next_sector;
 						}
 					}
-
 				}
 			}
 		}
-
 	}
+
+   // handle height
+   loc.pos.y += mov.y;
+   for (int nr : visited) {
+		const Sector& sector = map.sectors[nr];
+		// clamp height
+		if (loc.pos.y - floor_dist < sector.floor_height)	loc.pos.y = sector.floor_height + floor_dist;
+		if (loc.pos.y + ceil_dist > sector.ceil_height)		loc.pos.y = sector.ceil_height - ceil_dist;
+   }
+
 
 	loc.pos.x = pos.x;
 	loc.pos.z = pos.y;
