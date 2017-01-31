@@ -1,7 +1,7 @@
 CF = -Wall --std=c++14 -Og
 LF = -Wall --std=c++14 -lSDL2 -lSDL2_image -lGLEW -lGL
 
-CXX = g++
+CXX = g++-6
 SRC = $(wildcard src/*.cpp)
 OBJ = $(SRC:src/%.cpp=obj/%.o)
 TRG = portals

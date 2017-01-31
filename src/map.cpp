@@ -5,7 +5,7 @@
 
 #include <cstdio>
 #include <glm/gtx/norm.hpp>
-#include <set>
+#include <algorithm>
 #include <queue>
 
 
@@ -51,15 +51,13 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 	// 2d position
 	glm::vec2 pos(loc.pos.x, loc.pos.z);
 
-	std::set<int> visited;
-	std::queue<int> todo;
-	todo.push(loc.sector);
-
+	std::vector<int> visited;
+	std::queue<int> todo({ loc.sector });
 
 	while (!todo.empty()) {
 		int nr = todo.front();
 		todo.pop();
-		visited.insert(nr);
+		visited.push_back(nr);
 		const Sector& sector = map.sectors[nr];
 
 		// clamp height
@@ -97,7 +95,7 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 					}
 					else {
 
-						if (visited.count(wall.next_sector) == 0) {
+						if (std::find(visited.begin(), visited.end(), wall.next_sector) == visited.end()) {
 							todo.push(wall.next_sector);
 							float cross = glm::dot(glm::vec2(ww.y, -ww.x), pw);
 							if (cross < 0) loc.sector = wall.next_sector;
