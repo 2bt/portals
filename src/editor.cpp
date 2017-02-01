@@ -3,50 +3,91 @@
 #include "map.h"
 
 
+namespace {
+
+	bool point_in_rect(const glm::vec2& p, glm::vec2 r1, glm::vec2 r2) {
+		if (r1.x > r2.x) std::swap(r1.x, r2.x);
+		if (r1.y > r2.y) std::swap(r1.y, r2.y);
+		return p.x >= r1.x && p.x <= r2.x && p.y >= r1.y && p.y <= r2.y;
+	}
+
+}
+
+
+
+void Editor::update_cursor(int x, int y) {
+	m_cursor = glm::vec2(
+		x - rmw::context.get_width() / 2,
+		y - rmw::context.get_height() / 2);
+	m_cursor *= m_zoom;
+	m_cursor -= m_scroll;
+}
+
 
 void Editor::mouse_motion(const SDL_MouseMotionEvent& motion) {
-	if (motion.state & SDL_BUTTON_LMASK) {
-		m_scroll += glm::vec2(motion.xrel, motion.yrel);
+}
 
+
+void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
+	if (button.button == SDL_BUTTON_LEFT) {
+		if (button.state == SDL_PRESSED) {
+			m_selecting = true;
+			m_select_pos = m_cursor;
+		}
+		else {
+			m_selecting = false;
+
+			const uint8_t* ks = SDL_GetKeyboardState(nullptr);
+			if (!ks[SDL_SCANCODE_LCTRL] && !ks[SDL_SCANCODE_RCTRL]) m_selection.clear();
+
+			// select vertices
+			for (int i = 0; i < (int) map.walls.size(); ++i) {
+				if (point_in_rect(map.walls[i].pos, m_select_pos, m_cursor)) {
+					m_selection.push_back(i);
+				}
+			}
+
+		}
 	}
 }
-void Editor::mouse_up(const SDL_MouseButtonEvent& button) {
-}
-void Editor::mouse_down(const SDL_MouseButtonEvent& button) {
-}
+
+
 void Editor::mouse_wheel(const SDL_MouseWheelEvent& wheel) {
-	m_zoom *= powf(1.1, wheel.y);
+	// zoom
+	m_zoom *= powf(0.9, wheel.y);
 }
 
 
 void Editor::draw() {
 
+	// scrolling
 	int x, y;
-	SDL_GetMouseState(&x, &y);
-
-	renderer2D.origin();
-	renderer2D.translate(rmw::context.get_width() / 2, rmw::context.get_height() / 2);
-	renderer2D.scale(m_zoom);
-	renderer2D.translate(m_scroll);
-
-
-
-
-	// draw player
-	{
-		glm::vec2 p(eye.get_location().pos.x, eye.get_location().pos.z);
-		float co = cosf(eye.get_ang_y());
-		float si = sinf(eye.get_ang_y());
-		glm::mat2x2 m = { {  co,  si }, { -si,  co }, };
-		glm::vec2 p1 = m * glm::vec2( 0.0, -0.6) + p;
-		glm::vec2 p2 = m * glm::vec2( 0.3,  0.2) + p;
-		glm::vec2 p3 = m * glm::vec2(-0.3,  0.2) + p;
-		renderer2D.set_color(255, 255, 0);
-		renderer2D.line(p1, p2);
-		renderer2D.line(p2, p3);
-		renderer2D.line(p3, p1);
+	uint32_t buttons = SDL_GetMouseState(&x, &y);
+	glm::vec2 old_cursor = m_cursor;
+	update_cursor(x, y);
+	glm::vec2 mov = m_cursor - old_cursor;
+	if (buttons & SDL_BUTTON_RMASK) {
+		m_scroll += mov;
+		m_cursor -= mov;
 	}
 
+	const uint8_t* ks = SDL_GetKeyboardState(nullptr);
+	// move selection
+	if (ks[SDL_SCANCODE_G]) {
+		for (int i : m_selection) {
+			Wall& w = map.walls[i];
+			w.pos += mov;
+		}
+	}
+
+
+
+
+	// start drawing stuff
+	renderer2D.origin();
+	renderer2D.translate(rmw::context.get_width() / 2, rmw::context.get_height() / 2);
+	renderer2D.scale(1 / m_zoom);
+	renderer2D.translate(m_scroll);
 
 /*
 	glDisable(GL_DEPTH_TEST);
@@ -56,6 +97,7 @@ void Editor::draw() {
 */
 
 
+	// map
 	for (int i = 0; i < (int) map.sectors.size(); ++i) {
 		const Sector& s = map.sectors[i];
 
@@ -76,6 +118,49 @@ void Editor::draw() {
 
 		}
 	}
+
+
+	// player
+	{
+		glm::vec2 p(eye.get_location().pos.x, eye.get_location().pos.z);
+		float co = cosf(eye.get_ang_y());
+		float si = sinf(eye.get_ang_y());
+		glm::mat2x2 m = { {  co,  si }, { -si,  co }, };
+		glm::vec2 p1 = m * glm::vec2( 0.0, -0.6) + p;
+		glm::vec2 p2 = m * glm::vec2( 0.3,  0.2) + p;
+		glm::vec2 p3 = m * glm::vec2(-0.3,  0.2) + p;
+		renderer2D.set_color(0, 0, 255);
+		renderer2D.line(p1, p2);
+		renderer2D.line(p2, p3);
+		renderer2D.line(p3, p1);
+	}
+
+
+	// selection
+	renderer2D.set_color(255, 255, 0);
+	for (int i : m_selection) {
+		Wall& w = map.walls[i];
+		renderer2D.rect(w.pos + glm::vec2(m_zoom * 3), w.pos - glm::vec2(m_zoom * 3));
+	}
+
+
+	// selection box
+	if (m_selecting) {
+		renderer2D.set_color(255, 255, 0);
+		renderer2D.rect(m_cursor, m_select_pos);
+	}
+
+
+
+	// cursor
+//	renderer2D.set_color(255, 255, 255);
+//	renderer2D.line(
+//		m_cursor - glm::vec2(3 * m_zoom, 0),
+//		m_cursor + glm::vec2(3 * m_zoom, 0));
+//	renderer2D.line(
+//		m_cursor - glm::vec2(0, 3 * m_zoom),
+//		m_cursor + glm::vec2(0, 3 * m_zoom));
+
 
 
 	renderer2D.flush();

@@ -54,8 +54,8 @@ public:
 	}
 	void translate(const glm::vec2& v) { translate(v.x, v.y); }
 	void translate(float x, float y) {
-		transform()[2][0] += x;
-		transform()[2][1] += y;
+		transform()[2][0] += x * transform()[0][0];
+		transform()[2][1] += y * transform()[1][1];
 	}
 
 	void set_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a=255) {
@@ -71,6 +71,12 @@ public:
 	void line(const glm::vec2& p1, const glm::vec2& p2) {
 		m_vertices.emplace_back(transform() * glm::vec3(p1, 1), m_color);
 		m_vertices.emplace_back(transform() * glm::vec3(p2, 1), m_color);
+	}
+	void rect(const glm::vec2& p1, const glm::vec2& p2) {
+		line(p1.x, p1.y, p1.x, p2.y);
+		line(p1.x, p2.y, p2.x, p2.y);
+		line(p2.x, p2.y, p2.x, p1.y);
+		line(p2.x, p1.y, p1.x, p1.y);
 	}
 
 	void flush() {

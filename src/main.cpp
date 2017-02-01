@@ -85,10 +85,10 @@ public:
 
 
 			glm::u8vec4 col(255, 255, 255, 255);
-			if (i == eye.get_location().sector) {
-				col.g = 100;
-				col.b = 100;
-			}
+//			if (i == eye.get_location().sector) {
+//				col.g = 100;
+//				col.b = 100;
+//			}
 
 			// walls
 			for (int j = 0; j < sector.wall_count; ++j) {
@@ -240,11 +240,8 @@ int main(int argc, char** argv) {
 				break;
 
 			case SDL_MOUSEBUTTONUP:
-				editor.mouse_up(e.button);
-				break;
-
 			case SDL_MOUSEBUTTONDOWN:
-				editor.mouse_down(e.button);
+				editor.mouse_button(e.button);
 				break;
 
 			case SDL_MOUSEWHEEL:
