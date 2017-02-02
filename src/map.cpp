@@ -8,28 +8,77 @@
 #include <algorithm>
 #include <queue>
 
+#include <unordered_map>
+#include <glm/gtx/hash.hpp>
+
+namespace std {
+	template <>
+	class hash<std::pair<glm::vec2, glm::vec2>> {
+	public:
+		size_t operator()(const std::pair<glm::vec2, glm::vec2>& edge) const {
+			return (hash<glm::vec2>()(edge.first) << 7) ^ hash<glm::vec2>()(edge.second);
+		}
+	};
+}
+
 
 Map::Map() {
 
-	walls = {
-		{{ 0,	10	}, 1, -1, -1 },
-		{{ 10,	10	}, 2, -1, -1 },
-		{{ 10,	0	}, 3, -1, -1 },
-		{{ 5,	-2	}, 4, 5, 1 },
-		{{ 0,	0	}, 0, -1, -1 },
-
-
-		{{ 0,	0	}, 6, 3, 0 },
-		{{ 5,	-2	}, 7, -1, -1 },
-		{{ 5,	-10	}, 8, -1, -1 },
-		{{ -5,	-10	}, 9, -1, -1 },
-		{{ -5,	0	}, 5, -1, -1 },
-	};
-
 	sectors = {
-		{ 0, 5,	-2, 3 },
-		{ 5, 5,	-1, 7 }
+		{	{
+				{{ 0,	10	}},
+				{{ 10,	10	}},
+				{{ 10,	0	}},
+				{{ 5,	-2	}},
+				{{ 0,	0	}},
+			},
+			-2, 4
+		},
+		{	{
+				{{ 0,	0	}},
+				{{ 5,	-2	}},
+				{{ 5,	-10	}},
+				{{ -5,	-10	}},
+				{{ -5,	0	}},
+			},
+			-1, 7
+		},
 	};
+
+
+	find_portals();
+
+}
+
+
+void Map::find_portals() {
+	std::unordered_map<std::pair<glm::vec2, glm::vec2>, WallRef> wall_map;
+	for (int i = 0; i < (int) sectors.size(); ++i) {
+		Sector& sector = sectors[i];
+
+		for (int j = 0; j < (int) sector.walls.size(); ++j) {
+			Wall& w1 = sector.walls[j];
+			Wall& w2 = sector.walls[(j + 1) % sector.walls.size()];
+
+
+			auto it = wall_map.find(std::make_pair(w2.pos, w1.pos));
+			if (it == wall_map.end()) {
+				wall_map[std::make_pair(w1.pos, w2.pos)] = { i, j };
+				w1.next.wall_nr = -1;
+				w1.next.sector_nr = -1;
+			}
+			else {
+				// init portal
+				WallRef& ref = it->second;
+				w1.next.sector_nr = ref.sector_nr;
+				w1.next.wall_nr = ref.wall_nr;
+				Wall& next_wall = sectors[ref.sector_nr].walls[ref.wall_nr];
+				next_wall.next.sector_nr = i;
+				next_wall.next.wall_nr = j;
+				wall_map.erase(it);
+			}
+		}
+	}
 }
 
 
@@ -60,9 +109,10 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 		visited.push_back(nr);
 		const Sector& sector = map.sectors[nr];
 
-		for (int j = 0; j < sector.wall_count; ++j) {
-			const Wall& wall = walls[sector.wall_index + j];
-			glm::vec2 ww = walls[wall.other_point].pos - wall.pos;
+		for (int j = 0; j < (int) sector.walls.size(); ++j) {
+			const Wall& wall = sector.walls[j];
+			const Wall& wall2 = sector.walls[(j + 1) % sector.walls.size()];
+			glm::vec2 ww = wall2.pos - wall.pos;
 			glm::vec2 pw = pos - wall.pos;
 
 			float u = glm::dot(pw, ww) / glm::length2(ww);
@@ -77,25 +127,25 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 
 				normal *= radius / dst - 1;
 
-				if (wall.next_sector == -1) {
+				if (wall.next.sector_nr == -1) {
 					// wall
 					pos += normal;
 				}
 				else {
 					// portal
-					const Sector& s = sectors[wall.next_sector];
+					const Sector& s = sectors[wall.next.sector_nr];
 
 					if (loc.pos.y - floor_dist < s.floor_height
 					||  loc.pos.y + ceil_dist > s.ceil_height) {
 						pos += normal;
 					}
 					else {
-						if (std::find(visited.begin(), visited.end(), wall.next_sector) == visited.end()) {
-							todo.push(wall.next_sector);
+						if (std::find(visited.begin(), visited.end(), wall.next.sector_nr) == visited.end()) {
+							todo.push(wall.next.sector_nr);
 
 							// have we passed through the portal?
 							float cross = glm::dot(glm::vec2(ww.y, -ww.x), pw);
-							if (cross < 0) loc.sector = wall.next_sector;
+							if (cross < 0) loc.sector = wall.next.sector_nr;
 						}
 					}
 				}

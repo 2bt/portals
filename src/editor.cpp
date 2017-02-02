@@ -41,12 +41,15 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 			if (!ks[SDL_SCANCODE_LCTRL] && !ks[SDL_SCANCODE_RCTRL]) m_selection.clear();
 
 			// select vertices
-			for (int i = 0; i < (int) map.walls.size(); ++i) {
-				if (point_in_rect(map.walls[i].pos, m_select_pos, m_cursor)) {
-					m_selection.push_back(i);
+			for (int i = 0; i < (int) map.sectors.size(); ++i) {
+				Sector& sector = map.sectors[i];
+				for (int j = 0; j < (int) sector.walls.size(); ++j) {
+					Wall& wall = sector.walls[j];
+					if (point_in_rect(wall.pos, m_select_pos, m_cursor)) {
+						m_selection.push_back({ i, j });
+					}
 				}
 			}
-
 		}
 	}
 }
@@ -74,9 +77,9 @@ void Editor::draw() {
 	const uint8_t* ks = SDL_GetKeyboardState(nullptr);
 	// move selection
 	if (ks[SDL_SCANCODE_G]) {
-		for (int i : m_selection) {
-			Wall& w = map.walls[i];
-			w.pos += mov;
+		for (WallRef& ref : m_selection) {
+			Wall& wall = map.sectors[ref.sector_nr].walls[ref.wall_nr];
+			wall.pos += mov;
 		}
 	}
 
@@ -99,14 +102,14 @@ void Editor::draw() {
 
 	// map
 	for (int i = 0; i < (int) map.sectors.size(); ++i) {
-		const Sector& s = map.sectors[i];
+		const Sector& sector = map.sectors[i];
 
-		for (int j = 0; j < s.wall_count; ++j) {
-			auto& w1 = map.walls[s.wall_index + j];
-			auto& w2 = map.walls[w1.other_point];
+		for (int j = 0; j < (int) sector.walls.size(); ++j) {
+			auto& w1 = sector.walls[j];
+			auto& w2 = sector.walls[(j + 1) % sector.walls.size()];
 
 			// full wall
-			if (w1.next_sector == -1) {
+			if (w1.next.sector_nr == -1) {
 				if (i == eye.get_location().sector) renderer2D.set_color(100, 100, 255);
 				else renderer2D.set_color(200, 200, 200);
 			}
@@ -138,8 +141,8 @@ void Editor::draw() {
 
 	// selection
 	renderer2D.set_color(255, 255, 0);
-	for (int i : m_selection) {
-		Wall& w = map.walls[i];
+	for (const WallRef& ref : m_selection) {
+		Wall& w = map.sectors[ref.sector_nr].walls[ref.wall_nr];
 		renderer2D.rect(w.pos + glm::vec2(m_zoom * 3), w.pos - glm::vec2(m_zoom * 3));
 	}
 

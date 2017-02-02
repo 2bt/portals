@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderer2d.h"
+#include "map.h"
 
 class Editor {
 public:
@@ -21,7 +22,7 @@ private:
 
 	bool					m_selecting = false;
 	glm::vec2				m_select_pos;
-	std::vector<int>		m_selection;
+	std::vector<WallRef>	m_selection;
 
 };
 

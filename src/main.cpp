@@ -91,42 +91,41 @@ public:
 //			}
 
 			// walls
-			for (int j = 0; j < sector.wall_count; ++j) {
+			for (int j = 0; j < (int) sector.walls.size(); ++j) {
 
-				auto& w1 = map.walls[sector.wall_index + j];
-				auto& w2 = map.walls[w1.other_point];
-				auto p1 = w1.pos;
-				auto p2 = w2.pos;
+				auto& w1 = sector.walls[j];
+				auto& w2 = sector.walls[(j + 1) % sector.walls.size()];
+				auto& p1 = w1.pos;
+				auto& p2 = w2.pos;
 
 
 				// full wall
-				if (w1.next_sector == -1) {
-					wall(p1.x, sector.floor_height, p1.y, p2.x, sector.ceil_height, p2.y);
+				if (w1.next.sector_nr == -1) {
+					generate_wall(p1.x, sector.floor_height, p1.y, p2.x, sector.ceil_height, p2.y);
 					continue;
 				}
 
-				auto& s2 = map.sectors[w1.next_sector];
+				auto& s2 = map.sectors[w1.next.sector_nr];
 
 				// floor wall
 				if (sector.floor_height < s2.floor_height) {
-					wall(p1.x, sector.floor_height, p1.y, p2.x, s2.floor_height, p2.y);
+					generate_wall(p1.x, sector.floor_height, p1.y, p2.x, s2.floor_height, p2.y);
 				}
 
 				// ceil wall
 				if (sector.ceil_height > s2.ceil_height) {
-					wall(p1.x, s2.ceil_height, p1.y, p2.x, sector.ceil_height, p2.y);
+					generate_wall(p1.x, s2.ceil_height, p1.y, p2.x, sector.ceil_height, p2.y);
 				}
-
 
 			}
 
 
 			// floor and ceiling
-			auto p1 = map.walls[sector.wall_index].pos;
+			auto& p1 = sector.walls[0].pos;
 
-			for (int i = 2; i < sector.wall_count; ++i) {
-				auto p2 = map.walls[sector.wall_index + i - 1].pos;
-				auto p3 = map.walls[sector.wall_index + i].pos;
+			for (int i = 2; i < (int) sector.walls.size(); ++i) {
+				auto& p2 = sector.walls[i - 1].pos;
+				auto& p3 = sector.walls[i].pos;
 
 				floor_verts.emplace_back(glm::vec3(p1.x, sector.floor_height, p1.y), p1, col);
 				floor_verts.emplace_back(glm::vec3(p2.x, sector.floor_height, p2.y), p2, col);
@@ -172,7 +171,7 @@ public:
 
 private:
 
-	void wall(float x1, float y1, float z1, float x2, float y2, float z2) {
+	void generate_wall(float x1, float y1, float z1, float x2, float y2, float z2) {
 
 		float u1, u2;
 		if (abs(x2 - x1) > abs(z2 - z1)) {
