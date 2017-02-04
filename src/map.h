@@ -32,7 +32,7 @@ public:
 	Map();
 	int find_sector(const glm::vec3& pos) const;
 	void clip_move(Location& loc, const glm::vec3& mov) const;
-	void find_portals();
+	void setup_portals();
 
 //private:
 

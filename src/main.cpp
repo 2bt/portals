@@ -59,7 +59,7 @@ public:
 				out vec4 out_color;
 				void main() {
 					vec4 c = texture(tex, ex_uv) * ex_color;
-					out_color = vec4(c.rgb * pow(0.9, ex_depth), c.a);
+					out_color = vec4(c.rgb * pow(0.93, ex_depth), c.a);
 				})");
 
 		vertex_buffer = rmw::context.create_vertex_buffer(rmw::BufferHint::StreamDraw);
@@ -232,10 +232,10 @@ int main(int argc, char** argv) {
 
 			case SDL_KEYDOWN:
 				if (e.key.keysym.scancode == SDL_SCANCODE_ESCAPE) running = false;
+				editor.keyboard(e.key);
 				break;
-
-			case SDL_MOUSEMOTION:
-				editor.mouse_motion(e.motion);
+			case SDL_KEYUP:
+				editor.keyboard(e.key);
 				break;
 
 			case SDL_MOUSEBUTTONUP:

@@ -1,4 +1,4 @@
-CF = -Wall --std=c++14 -Og
+CF = -Wall --std=c++14 -g
 LF = -Wall --std=c++14 -lSDL2 -lSDL2_image -lGLEW -lGL
 
 CXX = g++

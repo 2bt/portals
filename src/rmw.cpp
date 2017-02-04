@@ -53,15 +53,25 @@ void VertexArray::set_attribute(int i, const VertexBuffer::Ptr& vb, ComponentTyp
 	glEnableVertexAttribArray(i);
 	glVertexAttribPointer(i, component_count, map_to_gl(component_type), normalized, stride, reinterpret_cast<void*>(offset));
 }
-void VertexArray::set_attribute(int i, const glm::vec3& v) {
+void VertexArray::set_attribute(int i, float f) {
+	glBindVertexArray(_va);
+	glDisableVertexAttribArray(i);
+	glVertexAttrib1f(i, f);
+}
+void VertexArray::set_attribute(int i, const glm::vec2& v) {
 	glBindVertexArray(_va);
 	glDisableVertexAttribArray(i);
 	glVertexAttrib2fv(i, &v.x);
 }
-void VertexArray::set_attribute(int i, const glm::vec4& v) {
+void VertexArray::set_attribute(int i, const glm::vec3& v) {
 	glBindVertexArray(_va);
 	glDisableVertexAttribArray(i);
 	glVertexAttrib3fv(i, &v.x);
+}
+void VertexArray::set_attribute(int i, const glm::vec4& v) {
+	glBindVertexArray(_va);
+	glDisableVertexAttribArray(i);
+	glVertexAttrib4fv(i, &v.x);
 }
 
 void VertexArray::set_index_buffer(const IndexBuffer& ib) {
@@ -253,6 +263,7 @@ bool Context::init(int width, int height, const char* title)
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
+
 	_window = SDL_CreateWindow(title,
 			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 			_viewport.w, _viewport.h,
@@ -264,6 +275,8 @@ bool Context::init(int width, int height, const char* title)
 	glewExperimental = true;
 	glewInit();
 
+
+	glEnable(GL_PROGRAM_POINT_SIZE);
 
 
 	// initialize the reder state according to opengl's initial state
@@ -307,6 +320,7 @@ void Context::clear(const ClearState& cs) {
 
 
 void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const VertexArray::Ptr& va) {
+	if (va->_count == 0) return;
 
 	// sync render state
 	if (_render_state.depth_test_enabled != rs.depth_test_enabled) {

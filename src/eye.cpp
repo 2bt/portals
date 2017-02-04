@@ -19,8 +19,8 @@ void Eye::update() {
 
 	auto ks = SDL_GetKeyboardState(nullptr);
 
-	ang_y += (ks[SDL_SCANCODE_RIGHT]	- ks[SDL_SCANCODE_LEFT]		) * 0.02;
-	ang_x += (ks[SDL_SCANCODE_DOWN]		- ks[SDL_SCANCODE_UP]		) * 0.02;
+	ang_y += (ks[SDL_SCANCODE_RIGHT]	- ks[SDL_SCANCODE_LEFT]		) * 0.03;
+	ang_x += (ks[SDL_SCANCODE_DOWN]		- ks[SDL_SCANCODE_UP]		) * 0.03;
 	ang_x = std::max<float>(-M_PI * 0.5, std::min<float>(M_PI * 0.5, ang_x));
 
 	float x = (ks[SDL_SCANCODE_D]		- ks[SDL_SCANCODE_A]		) * 0.1;

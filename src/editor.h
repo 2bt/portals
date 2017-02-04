@@ -6,13 +6,11 @@
 class Editor {
 public:
 	void draw();
-	void mouse_motion(const SDL_MouseMotionEvent& motion);
 	void mouse_button(const SDL_MouseButtonEvent& button);
 	void mouse_wheel(const SDL_MouseWheelEvent& wheel);
+	void keyboard(const SDL_KeyboardEvent& key);
 
 private:
-
-	void update_cursor(int x, int y);
 
 	glm::vec2				m_scroll;
 	float					m_zoom = 0.1;
@@ -24,6 +22,8 @@ private:
 	glm::vec2				m_select_pos;
 	std::vector<WallRef>	m_selection;
 
+
+	bool					m_grid_enabled = false;
 };
 
 

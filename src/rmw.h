@@ -113,6 +113,8 @@ public:
 
 	void set_attribute(int i, const VertexBuffer::Ptr& vb, ComponentType component_type,
 						int component_count, bool normalized, int offset, int stride);
+	void set_attribute(int i, float f);
+	void set_attribute(int i, const glm::vec2& v);
 	void set_attribute(int i, const glm::vec3& v);
 	void set_attribute(int i, const glm::vec4& v);
 	// ...

@@ -1,15 +1,11 @@
 #include "map.h"
 
-// for debuging
-#include "renderer2d.h"
-
 #include <cstdio>
-#include <glm/gtx/norm.hpp>
 #include <algorithm>
 #include <queue>
-
 #include <unordered_map>
 #include <glm/gtx/hash.hpp>
+#include <glm/gtx/norm.hpp>
 
 namespace std {
 	template <>
@@ -46,12 +42,12 @@ Map::Map() {
 	};
 
 
-	find_portals();
+	setup_portals();
 
 }
 
 
-void Map::find_portals() {
+void Map::setup_portals() {
 	std::unordered_map<std::pair<glm::vec2, glm::vec2>, WallRef> wall_map;
 	for (int i = 0; i < (int) sectors.size(); ++i) {
 		Sector& sector = sectors[i];
@@ -60,11 +56,9 @@ void Map::find_portals() {
 			Wall& w1 = sector.walls[j];
 			Wall& w2 = sector.walls[(j + 1) % sector.walls.size()];
 
-
 			auto it = wall_map.find(std::make_pair(w2.pos, w1.pos));
 			if (it == wall_map.end()) {
 				wall_map[std::make_pair(w1.pos, w2.pos)] = { i, j };
-				w1.next.wall_nr = -1;
 				w1.next.sector_nr = -1;
 			}
 			else {
@@ -121,9 +115,6 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 			glm::vec2 normal = pos - p;
 			float dst = glm::length(normal);
 			if (dst < radius) {
-
-				// DEBUG
-				renderer2D.line(p, pos);
 
 				normal *= radius / dst - 1;
 
