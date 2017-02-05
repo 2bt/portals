@@ -13,6 +13,9 @@ public:
 private:
 
 	void snap_to_grid();
+	void split_sector();
+	void merge_sectors();
+
 
 	glm::vec2				m_scroll;
 	float					m_zoom = 0.1;

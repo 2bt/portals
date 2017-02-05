@@ -37,7 +37,7 @@ struct Location {
 class Map {
 public:
 	Map();
-	int find_sector(const glm::vec3& pos) const;
+	int pick_sector(const glm::vec2& p) const;
 	void clip_move(Location& loc, const glm::vec3& mov) const;
 	void setup_portals();
 

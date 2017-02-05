@@ -110,6 +110,7 @@ public:
 	void set_first(int i) { _first = i; };
 	void set_count(int i) { _count = i; };
 	void set_primitive_type(PrimitiveType t) { _primitive_type = t; };
+	PrimitiveType get_primitive_type() const { return _primitive_type; };
 
 	void set_attribute(int i, const VertexBuffer::Ptr& vb, ComponentType component_type,
 						int component_count, bool normalized, int offset, int stride);
@@ -121,9 +122,7 @@ public:
 
 	void set_index_buffer(const IndexBuffer& ib);
 
-	enum {
-		MAX_NUM_ATTRIBUTES = 5
-	};
+	enum { MAX_NUM_ATTRIBUTES = 5 };
 
 private:
 	VertexArray(const VertexArray&) = delete;

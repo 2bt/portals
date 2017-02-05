@@ -23,6 +23,67 @@ namespace {
 }
 
 
+void Editor::snap_to_grid() {
+	for (WallRef& ref : m_selection) {
+		Wall& wall = map.sectors[ref.sector_nr].walls[ref.wall_nr];
+		wall.pos.x = std::floor(wall.pos.x + 0.5);
+		wall.pos.y = std::floor(wall.pos.y + 0.5);
+	}
+	map.setup_portals();
+}
+
+
+void Editor::split_sector() {
+	if (m_selection.size() < 2) return;
+	// find line refs
+	int i;
+	for (i = 0; i < (int) m_selection.size() - 1; ++i) {
+		if (m_selection[i].sector_nr == m_selection[i + 1].sector_nr) break;
+	}
+	if (i == (int) m_selection.size() - 1) return;
+
+	Sector& s = map.sectors[m_selection[i].sector_nr];
+	int n1 = m_selection[i].wall_nr;
+	int n2 = m_selection[i + 1].wall_nr;
+	if (n1 == n2 || (n1 == 0 && n2 == (int) s.walls.size() - 1)) return;
+	m_selection.clear();
+
+	Sector new_sector;
+	new_sector.floor_height = s.floor_height;
+	new_sector.ceil_height = s.ceil_height;
+	new_sector.walls = std::vector<Wall>(s.walls.begin() + n1, s.walls.begin() + n2 + 1);
+	s.walls.erase(s.walls.begin() + n1 + 1, s.walls.begin() + n2);
+
+	map.sectors.emplace_back(std::move(new_sector));
+	map.setup_portals();
+}
+
+
+void Editor::merge_sectors() {
+	for (int i = 0; i < (int) m_selection.size() - 1; ++i) {
+		if (m_selection[i].sector_nr != m_selection[i].sector_nr) continue;
+		Sector& s = map.sectors[m_selection[i].sector_nr];
+		int n1 = m_selection[i].wall_nr;
+		int n2 = m_selection[i + 1].wall_nr;
+		if (n1 == n2 - 1 || (n1 == 0 && n2 == (int) s.walls.size() - 1)) {
+			Wall& w = s.walls[n1];
+			if (w.next.sector_nr == -1 || w.next.sector_nr == m_selection[i].sector_nr) return;
+			Sector& s2 = map.sectors[w.next.sector_nr];
+
+			for (int j = (w.next.wall_nr + 2) % s2.walls.size();
+				j != w.next.wall_nr;
+				j = (j + 1)  % s2.walls.size()) {
+				s.walls.insert(s.walls.begin() + ++n1, s2.walls[j]);
+			}
+			map.sectors.erase(map.sectors.begin() + w.next.sector_nr);
+
+			map.setup_portals();
+			m_selection.clear();
+			return;
+		}
+	}
+}
+
 
 void Editor::keyboard(const SDL_KeyboardEvent& key) {
 	if (key.type != SDL_KEYDOWN) return;
@@ -56,28 +117,18 @@ void Editor::keyboard(const SDL_KeyboardEvent& key) {
 		return;
 	}
 
-	// split along edge
+
 	if (key.keysym.sym == SDLK_b) {
-		if (m_selection.size() != 2) return;
-		if (m_selection[0].sector_nr != m_selection[1].sector_nr) return;
-		Sector& s = map.sectors[m_selection[0].sector_nr];
-		int n1 = m_selection[0].wall_nr;
-		int n2 = m_selection[1].wall_nr;
-		if (n1 == n2 || (n1 == 0 && n2 == (int) s.walls.size() - 1)) return;
-		m_selection.clear();
-
-		//TODO
-		Sector new_sector;
-		new_sector.floor_height = s.floor_height;
-		new_sector.ceil_height = s.ceil_height;
-		new_sector.walls = std::vector<Wall>(s.walls.begin() + n1, s.walls.begin() + n2 + 1);
-		s.walls.erase(s.walls.begin() + n1 + 1, s.walls.begin() + n2);
-
-		map.sectors.emplace_back(std::move(new_sector));
-		map.setup_portals();
-
+		split_sector();
 		return;
 	}
+
+
+	if (key.keysym.sym == SDLK_m) {
+		merge_sectors();
+		return;
+	}
+
 
 }
 
@@ -117,7 +168,8 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 					WallRef& next = sector.walls[ref.wall_nr].next;
 					if (next.sector_nr != -1) {
 						Sector& next_sector = map.sectors[next.sector_nr];
-						next_sector.walls.insert(next_sector.walls.begin() + next.wall_nr + 1, { m_cursor });
+						next_sector.walls.insert(
+							next_sector.walls.begin() + next.wall_nr + 1, { m_cursor });
 						m_selection.push_back({ next.sector_nr, next.wall_nr + 1 });
 					}
 					map.setup_portals();
@@ -145,27 +197,40 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 			// add to selection
 			bool keep_old = ks[SDL_SCANCODE_LCTRL] || ks[SDL_SCANCODE_RCTRL];
 			if (!keep_old) m_selection.clear();
-
 			glm::vec2 b1 = m_select_pos;
 			glm::vec2 b2 = m_cursor;
 			bool just_one = b1 == b2;
-			if (just_one) {
-				b1 -= glm::vec2(m_zoom * 7);
-				b2 += glm::vec2(m_zoom * 7);
+
+			if (just_one && button.clicks == 2) {
+				// add all walls of picked sector
+				int nr = map.pick_sector(m_cursor);
+				if (nr == -1) return;
+				for (int i = 0; i < (int) map.sectors[nr].walls.size(); ++i) {
+					m_selection.push_back({ nr, i });
+				}
+
 			}
-			for (int i = 0; i < (int) map.sectors.size(); ++i) {
-				Sector& sector = map.sectors[i];
-				for (int j = 0; j < (int) sector.walls.size(); ++j) {
-					Wall& wall = sector.walls[j];
-					if (point_in_rect(wall.pos, b1, b2)) {
-						m_selection.push_back({ i, j });
-						if (just_one) {
-							i = map.sectors.size();
-							break;
+			else {
+				// add walls in selection rect
+				if (just_one) {
+					b1 -= glm::vec2(m_zoom * 7);
+					b2 += glm::vec2(m_zoom * 7);
+				}
+				for (int i = 0; i < (int) map.sectors.size(); ++i) {
+					Sector& sector = map.sectors[i];
+					for (int j = 0; j < (int) sector.walls.size(); ++j) {
+						Wall& wall = sector.walls[j];
+						if (point_in_rect(wall.pos, b1, b2)) {
+							m_selection.push_back({ i, j });
+							if (just_one) {
+								i = map.sectors.size();
+								break;
+							}
 						}
 					}
 				}
 			}
+
 
 			if (keep_old) {
 				// keep selection sorted
@@ -178,6 +243,8 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 					else ++i;
 				}
 			}
+
+
 		}
 	}
 }
@@ -186,15 +253,6 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 void Editor::mouse_wheel(const SDL_MouseWheelEvent& wheel) {
 	// zoom
 	m_zoom *= powf(0.9, wheel.y);
-}
-
-void Editor::snap_to_grid() {
-	for (WallRef& ref : m_selection) {
-		Wall& wall = map.sectors[ref.sector_nr].walls[ref.wall_nr];
-		wall.pos.x = std::floor(wall.pos.x + 0.5);
-		wall.pos.y = std::floor(wall.pos.y + 0.5);
-	}
-	map.setup_portals();
 }
 
 void Editor::draw() {
@@ -244,6 +302,7 @@ void Editor::draw() {
 
 
 	// grid
+	renderer2D.set_line_width(1);
 	if (m_grid_enabled) {
 		renderer2D.set_color(100, 100, 100);
 		int inc = 1;
@@ -256,40 +315,59 @@ void Editor::draw() {
 
 		for (int x = x1; x < x2; x += inc) renderer2D.line(x, y1, x, y2);
 		for (int y = y1; y < y2; y += inc) renderer2D.line(x1, y, x2, y);
-
-
 	}
+	renderer2D.set_line_width(3);
 
+
+	// selection
+	renderer2D.set_color(100, 100, 0);
+	for (const WallRef& ref : m_selection) {
+		Sector& s = map.sectors[ref.sector_nr];
+		Wall& w1 = s.walls[(ref.wall_nr + s.walls.size() - 1) % s.walls.size()];
+		Wall& w2 = s.walls[ref.wall_nr];
+		Wall& w3 = s.walls[(ref.wall_nr + 1) % s.walls.size()];
+		glm::vec2 d1 = glm::normalize(w1.pos - w2.pos);
+		glm::vec2 d2 = glm::normalize(w3.pos - w2.pos);
+		glm::vec2 d = d1;
+		float si = sinf(M_PI / 6);
+		float co = cosf(M_PI / 6);
+		float cross = d.x * d2.y - d.y * d2.x > 0;
+		for (int i = 0; i < 12; ++i) {
+			glm::vec2 e = glm::vec2(d.x * co - d.y * si, d.y * co + d.x * si);
+			float c = e.x * d2.y - e.y * d2.x > 0;
+			if (cross > 0 && c <= 0) break;
+			renderer2D.triangle(w2.pos, w2.pos + d * m_zoom * 20.0f, w2.pos + e * m_zoom * 20.0f);
+			cross = c;
+			d = e;
+		}
+		renderer2D.triangle(w2.pos, w2.pos + d * m_zoom * 20.0f, w2.pos + d2 * m_zoom * 20.0f);
+	}
 
 
 
 	// map
 	renderer2D.set_point_size(7);
 	for (int i = 0; i < (int) map.sectors.size(); ++i) {
-		const Sector& sector = map.sectors[i];
-
+		Sector& sector = map.sectors[i];
 		for (int j = 0; j < (int) sector.walls.size(); ++j) {
-			auto& w1 = sector.walls[j];
-			auto& w2 = sector.walls[(j + 1) % sector.walls.size()];
-
-			// full wall
-			if (w1.next.sector_nr == -1) {
-//				if (i == eye.get_location().sector) renderer2D.set_color(100, 100, 255);
-//				else
-					renderer2D.set_color(200, 200, 200);
-			}
-			else {
-				renderer2D.set_color(200, 0, 0);
-			}
-
+			Wall& w1 = sector.walls[j];
+			Wall& w2 = sector.walls[(j + 1) % sector.walls.size()];
+			if (w1.next.sector_nr == -1) renderer2D.set_color(200, 200, 200);
+			else renderer2D.set_color(200, 0, 0);
 			renderer2D.line(w1.pos, w2.pos);
-			renderer2D.point(w1.pos);
-
+		}
+	}
+	renderer2D.set_color(200, 200, 200);
+	for (int i = 0; i < (int) map.sectors.size(); ++i) {
+		Sector& sector = map.sectors[i];
+		for (int j = 0; j < (int) sector.walls.size(); ++j) {
+			renderer2D.point(sector.walls[j].pos);
 		}
 	}
 
 
 	// player
+	renderer2D.set_line_width(1);
 	{
 		glm::vec2 p(eye.get_location().pos.x, eye.get_location().pos.z);
 		float co = cosf(eye.get_ang_y());
@@ -307,13 +385,11 @@ void Editor::draw() {
 
 	// selection
 	renderer2D.set_color(255, 255, 0);
-	renderer2D.set_point_size(7);
 	for (const WallRef& ref : m_selection) {
-		Wall& w = map.sectors[ref.sector_nr].walls[ref.wall_nr];
-//		renderer2D.rect(w.pos + glm::vec2(m_zoom * 3), w.pos - glm::vec2(m_zoom * 3));
+		Sector& s = map.sectors[ref.sector_nr];
+		Wall& w = s.walls[ref.wall_nr];
 		renderer2D.point(w.pos);
 	}
-
 
 	// selection box
 	if (m_selecting) {

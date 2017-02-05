@@ -121,6 +121,7 @@ public:
 
 
 			// floor and ceiling
+			// TODO: trangulate
 			auto& p1 = sector.walls[0].pos;
 
 			for (int i = 2; i < (int) sector.walls.size(); ++i) {

@@ -9,7 +9,7 @@
 
 Eye::Eye() {
 	loc.pos = { 3, 1.5, 7 };
-	loc.sector = map.find_sector(loc.pos);
+	loc.sector = map.pick_sector(loc.pos);
 	ang_x = 0;
 	ang_y = 0;
 }
@@ -23,9 +23,9 @@ void Eye::update() {
 	ang_x += (ks[SDL_SCANCODE_DOWN]		- ks[SDL_SCANCODE_UP]		) * 0.03;
 	ang_x = std::max<float>(-M_PI * 0.5, std::min<float>(M_PI * 0.5, ang_x));
 
-	float x = (ks[SDL_SCANCODE_D]		- ks[SDL_SCANCODE_A]		) * 0.1;
-	float z = (ks[SDL_SCANCODE_S]		- ks[SDL_SCANCODE_W]		) * 0.1;
-	float y = (ks[SDL_SCANCODE_SPACE]	- ks[SDL_SCANCODE_LSHIFT]	) * 0.1;
+	float x = (ks[SDL_SCANCODE_D]		- ks[SDL_SCANCODE_A]		) * 0.125;
+	float z = (ks[SDL_SCANCODE_S]		- ks[SDL_SCANCODE_W]		) * 0.125;
+	float y = (ks[SDL_SCANCODE_SPACE]	- ks[SDL_SCANCODE_LSHIFT]	) * 0.125;
 
 	float cy = cosf(ang_y);
 	float sy = sinf(ang_y);

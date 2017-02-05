@@ -76,11 +76,22 @@ void Map::setup_portals() {
 }
 
 
-int Map::find_sector(const glm::vec3& pos) const {
-	// TODO
-
-
-	return 0;
+int Map::pick_sector(const glm::vec2& p) const {
+	for (int i = 0; i < (int) sectors.size(); ++i) {
+		const Sector& s = sectors[i];
+		bool success = false;
+		for (int j = 0; j < (int) s.walls.size(); ++j) {
+			const glm::vec2& w1 = s.walls[j].pos;
+			const glm::vec2& w2 = s.walls[(j + 1) % s.walls.size()].pos;
+			glm::vec2 ww = w2 - w1;
+			glm::vec2 pw = p - w1;
+			if ((w1.y <= p.y) == (w2.y > p.y) && (pw.x < ww.x * pw.y / ww.y)) {
+				success = !success;
+			}
+		}
+		if (success) return i;
+	}
+	return -1;
 }
 
 
