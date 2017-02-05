@@ -2,6 +2,7 @@
 #include "eye.h"
 #include "map.h"
 
+#include <algorithm>
 #include <glm/gtx/norm.hpp>
 
 
@@ -33,13 +34,48 @@ void Editor::keyboard(const SDL_KeyboardEvent& key) {
 	}
 
 	// snap to grid
+	if (key.keysym.sym == SDLK_v) {
+		snap_to_grid();
+		return;
+	}
+
+	// delete
 	if (key.keysym.sym == SDLK_x) {
-		for (WallRef& ref : m_selection) {
-			Wall& wall = map.sectors[ref.sector_nr].walls[ref.wall_nr];
-			wall.pos.x = std::floor(wall.pos.x + 0.5);
-			wall.pos.y = std::floor(wall.pos.y + 0.5);
+		// NOTE: inverse direction is important
+		for (int i = m_selection.size() - 1;  i >= 0; --i) {
+			WallRef& ref = m_selection[i];
+			Sector& s = map.sectors[ref.sector_nr];
+			s.walls.erase(s.walls.begin() + ref.wall_nr);
+		}
+		m_selection.clear();
+		for (auto it = map.sectors.begin(); it != map.sectors.end();) {
+			if (it->walls.size() <= 2) it = map.sectors.erase(it);
+			else ++it;
 		}
 		map.setup_portals();
+		return;
+	}
+
+	// split along edge
+	if (key.keysym.sym == SDLK_b) {
+		if (m_selection.size() != 2) return;
+		if (m_selection[0].sector_nr != m_selection[1].sector_nr) return;
+		Sector& s = map.sectors[m_selection[0].sector_nr];
+		int n1 = m_selection[0].wall_nr;
+		int n2 = m_selection[1].wall_nr;
+		if (n1 == n2 || (n1 == 0 && n2 == (int) s.walls.size() - 1)) return;
+		m_selection.clear();
+
+		//TODO
+		Sector new_sector;
+		new_sector.floor_height = s.floor_height;
+		new_sector.ceil_height = s.ceil_height;
+		new_sector.walls = std::vector<Wall>(s.walls.begin() + n1, s.walls.begin() + n2 + 1);
+		s.walls.erase(s.walls.begin() + n1 + 1, s.walls.begin() + n2);
+
+		map.sectors.emplace_back(std::move(new_sector));
+		map.setup_portals();
+
 		return;
 	}
 
@@ -48,6 +84,8 @@ void Editor::keyboard(const SDL_KeyboardEvent& key) {
 
 void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 	const uint8_t* ks = SDL_GetKeyboardState(nullptr);
+
+
 
 	if (button.button == SDL_BUTTON_LEFT) {
 		if (button.type == SDL_MOUSEBUTTONDOWN) {
@@ -88,6 +126,11 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 
 
 		}
+
+		// auto snapping
+		if (button.type == SDL_MOUSEBUTTONUP) {
+			snap_to_grid();
+		}
 	}
 
 	// select vertices
@@ -98,13 +141,17 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 		}
 		else {
 			m_selecting = false;
+
 			// add to selection
-			if (!ks[SDL_SCANCODE_LCTRL] && !ks[SDL_SCANCODE_RCTRL]) m_selection.clear();
+			bool keep_old = ks[SDL_SCANCODE_LCTRL] || ks[SDL_SCANCODE_RCTRL];
+			if (!keep_old) m_selection.clear();
+
 			glm::vec2 b1 = m_select_pos;
 			glm::vec2 b2 = m_cursor;
-			if (b1 == b2) {
-				b1 -= glm::vec2(m_zoom * 4);
-				b2 += glm::vec2(m_zoom * 4);
+			bool just_one = b1 == b2;
+			if (just_one) {
+				b1 -= glm::vec2(m_zoom * 7);
+				b2 += glm::vec2(m_zoom * 7);
 			}
 			for (int i = 0; i < (int) map.sectors.size(); ++i) {
 				Sector& sector = map.sectors[i];
@@ -112,7 +159,23 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 					Wall& wall = sector.walls[j];
 					if (point_in_rect(wall.pos, b1, b2)) {
 						m_selection.push_back({ i, j });
+						if (just_one) {
+							i = map.sectors.size();
+							break;
+						}
 					}
+				}
+			}
+
+			if (keep_old) {
+				// keep selection sorted
+				std::sort(m_selection.begin(), m_selection.end());
+				// remove duplicate
+				for (int i = 0; i < (int) m_selection.size() - 1;) {
+					if (m_selection[i] == m_selection[i + 1]) {
+						m_selection.erase(m_selection.begin() + i + 1);
+					}
+					else ++i;
 				}
 			}
 		}
@@ -125,6 +188,14 @@ void Editor::mouse_wheel(const SDL_MouseWheelEvent& wheel) {
 	m_zoom *= powf(0.9, wheel.y);
 }
 
+void Editor::snap_to_grid() {
+	for (WallRef& ref : m_selection) {
+		Wall& wall = map.sectors[ref.sector_nr].walls[ref.wall_nr];
+		wall.pos.x = std::floor(wall.pos.x + 0.5);
+		wall.pos.y = std::floor(wall.pos.y + 0.5);
+	}
+	map.setup_portals();
+}
 
 void Editor::draw() {
 
@@ -139,18 +210,19 @@ void Editor::draw() {
 
 	// scrolling
 	glm::vec2 mov = m_cursor - old_cursor;
-	if (buttons & SDL_BUTTON_MMASK) {
-		m_scroll += mov;
-		m_cursor -= mov;
-	}
+	if (glm::length2(mov) > 0) {
+		if (buttons & SDL_BUTTON_MMASK) {
+			m_scroll += mov;
+			m_cursor -= mov;
+		}
 
-	const uint8_t* ks = SDL_GetKeyboardState(nullptr);
-	// move selection
-//	if (ks[SDL_SCANCODE_G]) {
-	if (buttons & SDL_BUTTON_LMASK) {
-		for (WallRef& ref : m_selection) {
-			Wall& wall = map.sectors[ref.sector_nr].walls[ref.wall_nr];
-			wall.pos += mov;
+		// move selection
+		if (buttons & SDL_BUTTON_LMASK) {
+			for (WallRef& ref : m_selection) {
+				Wall& wall = map.sectors[ref.sector_nr].walls[ref.wall_nr];
+				wall.pos += mov;
+			}
+			map.setup_portals();
 		}
 	}
 
@@ -192,7 +264,7 @@ void Editor::draw() {
 
 
 	// map
-	renderer2D.set_point_size(5);
+	renderer2D.set_point_size(7);
 	for (int i = 0; i < (int) map.sectors.size(); ++i) {
 		const Sector& sector = map.sectors[i];
 

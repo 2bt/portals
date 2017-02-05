@@ -6,6 +6,13 @@
 struct WallRef {
 	int sector_nr;
 	int wall_nr;
+	bool operator<(const WallRef& rhs) const {
+		return sector_nr < rhs.sector_nr ||
+			(sector_nr == rhs.sector_nr && wall_nr < rhs.wall_nr);
+	}
+	bool operator==(const WallRef& rhs) const {
+		return sector_nr == rhs.sector_nr && wall_nr == rhs.wall_nr;
+	}
 };
 
 struct Wall {

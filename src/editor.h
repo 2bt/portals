@@ -12,10 +12,11 @@ public:
 
 private:
 
+	void snap_to_grid();
+
 	glm::vec2				m_scroll;
 	float					m_zoom = 0.1;
 	glm::vec2				m_cursor;
-
 
 
 	bool					m_selecting = false;
