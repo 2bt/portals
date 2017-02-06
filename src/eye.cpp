@@ -9,7 +9,7 @@
 
 Eye::Eye() {
 	loc.pos = { 3, 1.5, 7 };
-	loc.sector = map.pick_sector(glm::vec2(loc.pos.x, loc.pos.z));
+	loc.sector_nr = map.pick_sector(glm::vec2(loc.pos.x, loc.pos.z));
 	ang_x = 0;
 	ang_y = 0;
 }

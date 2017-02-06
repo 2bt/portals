@@ -1,4 +1,5 @@
 #include "map.h"
+#include "eye.h"
 
 #include <cstdio>
 #include <algorithm>
@@ -73,6 +74,9 @@ void Map::setup_portals() {
 			}
 		}
 	}
+
+	// XXX
+	eye.loc.sector_nr = pick_sector(eye.loc.pos);
 }
 
 
@@ -104,7 +108,7 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 
 	// ignore height movement
 	std::vector<int> visited;
-	std::queue<int> todo({ loc.sector });
+	std::queue<int> todo({ loc.sector_nr });
 	loc.pos.x += mov.x;
 	loc.pos.z += mov.z;
 	glm::vec2 pos(loc.pos.x, loc.pos.z);
@@ -147,7 +151,7 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 
 							// have we passed through the portal?
 							float cross = glm::dot(glm::vec2(ww.y, -ww.x), pw);
-							if (cross < 0) loc.sector = wall.next.sector_nr;
+							if (cross < 0) loc.sector_nr = wall.next.sector_nr;
 						}
 					}
 				}

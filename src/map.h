@@ -30,7 +30,7 @@ struct Sector {
 
 struct Location {
 	glm::vec3	pos;
-	int			sector;
+	int			sector_nr;
 };
 
 

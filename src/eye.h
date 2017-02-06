@@ -7,6 +7,7 @@
 
 
 class Eye {
+	friend class Map;
 public:
 	Eye();
 	void				update();

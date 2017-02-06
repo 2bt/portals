@@ -11,6 +11,13 @@
 #include "editor.h"
 
 
+
+template <class Func>
+bool triangulate(const std::vector<glm::vec2>& poly, Func f) {
+	return true;
+}
+
+
 Eye		eye;
 Editor	editor;
 
@@ -121,9 +128,8 @@ public:
 
 
 			// floor and ceiling
-			// TODO: trangulate
+/*
 			auto& p1 = sector.walls[0].pos;
-
 			for (int i = 2; i < (int) sector.walls.size(); ++i) {
 				auto& p2 = sector.walls[i - 1].pos;
 				auto& p3 = sector.walls[i].pos;
@@ -136,6 +142,24 @@ public:
 				ceil_verts.emplace_back(glm::vec3(p1.x, sector.ceil_height, p1.y), p1);
 				ceil_verts.emplace_back(glm::vec3(p3.x, sector.ceil_height, p3.y), p3);
 			}
+*/
+			// trangulate
+			std::vector<glm::vec2> poly;
+			for (const Wall& w : sector.walls) poly.emplace_back(w.pos);
+			triangulate(poly, [this, &col, &sector](
+				const glm::vec2& p1,
+				const glm::vec2& p2,
+				const glm::vec2& p3)
+			{
+				floor_verts.emplace_back(glm::vec3(p1.x, sector.floor_height, p1.y), p1, col);
+				floor_verts.emplace_back(glm::vec3(p2.x, sector.floor_height, p2.y), p2, col);
+				floor_verts.emplace_back(glm::vec3(p3.x, sector.floor_height, p3.y), p3, col);
+				ceil_verts.emplace_back(glm::vec3(p1.x, sector.ceil_height, p1.y), p1);
+				ceil_verts.emplace_back(glm::vec3(p2.x, sector.ceil_height, p2.y), p2);
+				ceil_verts.emplace_back(glm::vec3(p3.x, sector.ceil_height, p3.y), p3);
+			});
+
+
 		}
 
 
