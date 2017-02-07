@@ -76,7 +76,7 @@ void Map::setup_portals() {
 	}
 
 	// XXX
-	eye.loc.sector_nr = pick_sector(eye.loc.pos);
+	eye.loc.sector_nr = pick_sector(glm::vec2(eye.loc.pos.x, eye.loc.pos.z));
 }
 
 
