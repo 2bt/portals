@@ -45,7 +45,7 @@ void Editor::split_sector() {
 	Sector& s = map.sectors[m_selection[i].sector_nr];
 	int n1 = m_selection[i].wall_nr;
 	int n2 = m_selection[i + 1].wall_nr;
-	if (n1 == n2 || (n1 == 0 && n2 == (int) s.walls.size() - 1)) return;
+	if (n1 == n2 - 1 || (n1 == 0 && n2 == (int) s.walls.size() - 1)) return;
 	m_selection.clear();
 
 	Sector new_sector;
@@ -66,6 +66,7 @@ void Editor::merge_sectors() {
 		int n1 = m_selection[i].wall_nr;
 		int n2 = m_selection[i + 1].wall_nr;
 		if (n1 == n2 - 1 || (n1 == 0 && n2 == (int) s.walls.size() - 1)) {
+			if (n1 == 0) n1 = n2;
 			Wall& w = s.walls[n1];
 			if (w.next.sector_nr == -1 || w.next.sector_nr == m_selection[i].sector_nr) return;
 			Sector& s2 = map.sectors[w.next.sector_nr];
@@ -251,6 +252,27 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 
 
 void Editor::mouse_wheel(const SDL_MouseWheelEvent& wheel) {
+	const uint8_t* ks = SDL_GetKeyboardState(nullptr);
+	if (ks[SDL_SCANCODE_F]) {
+		int nr = -1;
+		for (const WallRef& ref : m_selection) {
+			if (ref.sector_nr == nr) continue;
+			nr = ref.sector_nr;
+			map.sectors[nr].floor_height += wheel.y;
+		}
+		return;
+	}
+	if (ks[SDL_SCANCODE_C]) {
+		int nr = -1;
+		for (const WallRef& ref : m_selection) {
+			if (ref.sector_nr == nr) continue;
+			nr = ref.sector_nr;
+			map.sectors[nr].ceil_height += wheel.y;
+		}
+		return;
+	}
+
+
 	// zoom
 	m_zoom *= powf(0.9, wheel.y);
 }
