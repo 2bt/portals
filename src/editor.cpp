@@ -36,19 +36,34 @@ void Editor::snap_to_grid() {
 void Editor::split_sector() {
 	if (m_selection.size() < 2) return;
 	// find line refs
+	int n1, n2;
 	int i;
 	for (i = 0; i < (int) m_selection.size() - 1; ++i) {
-		if (m_selection[i].sector_nr == m_selection[i + 1].sector_nr) break;
+		if (m_selection[i].sector_nr != m_selection[i + 1].sector_nr) continue;
+		n1 = m_selection[i].wall_nr;
+		n2 = m_selection[i + 1].wall_nr;
+		Sector& s = map.sectors[m_selection[i].sector_nr];
+		if (n1 == n2 - 1 || (n1 == 0 && n2 == (int) s.walls.size() - 1)) continue;
+		// check angles
+		const glm::vec2& p = s.walls[n1].pos;
+		const glm::vec2& p1 = s.walls[(n1 + s.walls.size() - 1) % s.walls.size()].pos - p;
+		const glm::vec2& p2 = s.walls[n2].pos - p;
+		const glm::vec2& p3 = s.walls[(n1 + 1) % s.walls.size()].pos - p;
+//		printf("a) %.f %.f\n", p1.x, p1.y);
+//		printf("b) %.f %.f\n", p2.x, p2.y);
+//		printf("c) %.f %.f\n", p3.x, p3.y);
+		float a1 = atan2f(p1.x * p2.y - p1.y * p2.x, glm::dot(p1, p2));
+		float a2 = atan2f(p1.x * p3.y - p1.y * p3.x, glm::dot(p1, p3));
+		if (a1 < 0) a1 += 2 * M_PI;
+		if (a2 < 0) a2 += 2 * M_PI;
+//		printf("%f %f %d\n", a1*180/M_PI, a2*180/M_PI, a1 < a2);
+		if (a1 < a2) break;
 	}
 	if (i == (int) m_selection.size() - 1) return;
-
-	Sector& s = map.sectors[m_selection[i].sector_nr];
-	int n1 = m_selection[i].wall_nr;
-	int n2 = m_selection[i + 1].wall_nr;
-	if (n1 == n2 - 1 || (n1 == 0 && n2 == (int) s.walls.size() - 1)) return;
 	m_selection.clear();
 
 	Sector new_sector;
+	Sector& s = map.sectors[m_selection[i].sector_nr];
 	new_sector.floor_height = s.floor_height;
 	new_sector.ceil_height = s.ceil_height;
 	new_sector.walls = std::vector<Wall>(s.walls.begin() + n1, s.walls.begin() + n2 + 1);
@@ -65,23 +80,20 @@ void Editor::merge_sectors() {
 		Sector& s = map.sectors[m_selection[i].sector_nr];
 		int n1 = m_selection[i].wall_nr;
 		int n2 = m_selection[i + 1].wall_nr;
-		if (n1 == n2 - 1 || (n1 == 0 && n2 == (int) s.walls.size() - 1)) {
-			if (n1 == 0) n1 = n2;
-			Wall& w = s.walls[n1];
-			if (w.next.sector_nr == -1 || w.next.sector_nr == m_selection[i].sector_nr) return;
-			Sector& s2 = map.sectors[w.next.sector_nr];
-
-			for (int j = (w.next.wall_nr + 2) % s2.walls.size();
-				j != w.next.wall_nr;
-				j = (j + 1)  % s2.walls.size()) {
-				s.walls.insert(s.walls.begin() + ++n1, s2.walls[j]);
-			}
-			map.sectors.erase(map.sectors.begin() + w.next.sector_nr);
-
-			map.setup_portals();
-			m_selection.clear();
-			return;
+		if (n1 != n2 - 1 && !(n1 == 0 && n2 == (int) s.walls.size() - 1)) continue;
+		if (n1 == 0) n1 = n2;
+		Wall& w = s.walls[n1];
+		if (w.next.sector_nr == -1 || w.next.sector_nr == m_selection[i].sector_nr) continue;
+		Sector& s2 = map.sectors[w.next.sector_nr];
+		for (int j = (w.next.wall_nr + 2) % s2.walls.size();
+			j != w.next.wall_nr;
+			j = (j + 1)  % s2.walls.size()) {
+			s.walls.insert(s.walls.begin() + ++n1, s2.walls[j]);
 		}
+		map.sectors.erase(map.sectors.begin() + w.next.sector_nr);
+		map.setup_portals();
+		m_selection.clear();
+		break;
 	}
 }
 
