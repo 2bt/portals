@@ -2,13 +2,12 @@
 
 
 #include <algorithm>
-//#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
 #include <SDL2/SDL.h>
 
 
 Eye::Eye() {
-	loc.pos = { 3, 1.5, 7 };
+	loc.pos = { 0, 0, 0 };
 	loc.sector_nr = map.pick_sector(glm::vec2(loc.pos.x, loc.pos.z));
 	ang_x = 0;
 	ang_y = 0;
@@ -23,9 +22,9 @@ void Eye::update() {
 	ang_x += (ks[SDL_SCANCODE_DOWN]		- ks[SDL_SCANCODE_UP]		) * 0.03;
 	ang_x = std::max<float>(-M_PI * 0.5, std::min<float>(M_PI * 0.5, ang_x));
 
-	float x = (ks[SDL_SCANCODE_D]		- ks[SDL_SCANCODE_A]		) * 0.125;
-	float z = (ks[SDL_SCANCODE_S]		- ks[SDL_SCANCODE_W]		) * 0.125;
-	float y = (ks[SDL_SCANCODE_SPACE]	- ks[SDL_SCANCODE_LSHIFT]	) * 0.125;
+	float x = (ks[SDL_SCANCODE_D]		- ks[SDL_SCANCODE_A]		) * 0.3;
+	float z = (ks[SDL_SCANCODE_S]		- ks[SDL_SCANCODE_W]		) * 0.3;
+	float y = (ks[SDL_SCANCODE_SPACE]	- ks[SDL_SCANCODE_LSHIFT]	) * 0.3;
 
 	float cy = cosf(ang_y);
 	float sy = sinf(ang_y);

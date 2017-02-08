@@ -23,22 +23,12 @@ Map::Map() {
 
 	sectors = {
 		{	{
-				{{ 0,	10	}},
+				{{ -10,	10	}},
 				{{ 10,	10	}},
-				{{ 10,	0	}},
-				{{ 5,	-2	}},
-				{{ 0,	0	}},
+				{{ 10,	-10	}},
+				{{ -10,	-10	}},
 			},
-			-2, 4
-		},
-		{	{
-				{{ 0,	0	}},
-				{{ 5,	-2	}},
-				{{ 5,	-10	}},
-				{{ -5,	-10	}},
-				{{ -5,	0	}},
-			},
-			-1, 7
+			0, 10
 		},
 	};
 
@@ -75,8 +65,6 @@ void Map::setup_portals() {
 		}
 	}
 
-	// XXX
-	eye.loc.sector_nr = pick_sector(glm::vec2(eye.loc.pos.x, eye.loc.pos.z));
 }
 
 
@@ -101,9 +89,9 @@ int Map::pick_sector(const glm::vec2& p) const {
 
 void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 
-	float radius = 0.8;
-	float floor_dist = 1.5;
-	float ceil_dist = 0.5;
+	float radius = 1.6;
+	float floor_dist = 5;
+	float ceil_dist = 1;
 
 
 	// ignore height movement
@@ -115,6 +103,7 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 	while (!todo.empty()) {
 		int nr = todo.front();
 		todo.pop();
+		if (nr == -1) continue;
 		visited.push_back(nr);
 		const Sector& sector = map.sectors[nr];
 

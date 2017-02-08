@@ -3,11 +3,11 @@
 
 //#include <glm/gtx/transform.hpp>
 #include <glm/glm.hpp>
-#include "map.h"
+#include "editor.h"
 
 
 class Eye {
-	friend class Map;
+	friend class Editor;
 public:
 	Eye();
 	void				update();

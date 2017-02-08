@@ -1,26 +1,11 @@
 #include "editor.h"
 #include "eye.h"
 #include "map.h"
+#include "math.h"
 
 #include <algorithm>
 #include <glm/gtx/norm.hpp>
 
-
-namespace {
-	bool point_in_rect(const glm::vec2& p, glm::vec2 r1, glm::vec2 r2) {
-		if (r1.x > r2.x) std::swap(r1.x, r2.x);
-		if (r1.y > r2.y) std::swap(r1.y, r2.y);
-		return p.x >= r1.x && p.x <= r2.x && p.y >= r1.y && p.y <= r2.y;
-	}
-
-
-	float point_line_segment_distance(const glm::vec2& p, glm::vec2 l1, glm::vec2 l2) {
-		glm::vec2 pl = p - l1;
-		glm::vec2 ll = l2 - l1;
-		float t = std::max(0.0f, std::min(1.0f, glm::dot(pl, ll) / glm::length2(ll)));
-		return glm::distance(p, l1 + t * ll);
-	}
-}
 
 
 void Editor::snap_to_grid() {
@@ -163,7 +148,7 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 					for (int j = 0; j < (int) sector.walls.size(); ++j) {
 						Wall& w1 = sector.walls[j];
 						Wall& w2 = sector.walls[(j + 1) % sector.walls.size()];
-						float d = point_line_segment_distance(m_cursor, w1.pos, w2.pos);
+						float d = point_to_line_segment_distance(m_cursor, w1.pos, w2.pos);
 						if (d < dist) {
 							dist = d;
 							ref.sector_nr = i;
@@ -186,6 +171,16 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 						m_selection.push_back({ next.sector_nr, next.wall_nr + 1 });
 					}
 					map.setup_portals();
+				}
+				return;
+			}
+
+			if (ks[SDL_SCANCODE_P]) {
+				eye.loc.pos.x = m_cursor.x;
+				eye.loc.pos.z = m_cursor.y;
+				eye.loc.sector_nr = map.pick_sector(m_cursor);
+				if (eye.loc.sector_nr != -1) {
+					eye.loc.pos.y = map.sectors[eye.loc.sector_nr].floor_height + 4;
 				}
 			}
 
@@ -407,9 +402,9 @@ void Editor::draw() {
 		float co = cosf(eye.get_ang_y());
 		float si = sinf(eye.get_ang_y());
 		glm::mat2x2 m = { {  co,  si }, { -si,  co }, };
-		glm::vec2 p1 = m * glm::vec2( 0.0, -0.6) + p;
-		glm::vec2 p2 = m * glm::vec2( 0.3,  0.2) + p;
-		glm::vec2 p3 = m * glm::vec2(-0.3,  0.2) + p;
+		glm::vec2 p1 = m * glm::vec2( 0.0, -1.2) + p;
+		glm::vec2 p2 = m * glm::vec2( 0.6,  0.4) + p;
+		glm::vec2 p3 = m * glm::vec2(-0.6,  0.4) + p;
 		renderer2D.set_color(0, 255, 255);
 		renderer2D.line(p1, p2);
 		renderer2D.line(p2, p3);
