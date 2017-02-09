@@ -40,6 +40,9 @@ public:
 	int pick_sector(const glm::vec2& p) const;
 	void clip_move(Location& loc, const glm::vec3& mov) const;
 	void setup_portals();
+	bool load(const char* name);
+	bool save(const char* name) const;
+
 
 //private:
 

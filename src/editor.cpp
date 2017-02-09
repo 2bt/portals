@@ -85,6 +85,8 @@ void Editor::merge_sectors() {
 
 void Editor::keyboard(const SDL_KeyboardEvent& key) {
 	if (key.type != SDL_KEYDOWN) return;
+	const uint8_t* ks = SDL_GetKeyboardState(nullptr);
+	bool ctrl = ks[SDL_SCANCODE_LCTRL] || ks[SDL_SCANCODE_RCTRL];
 
 	// toggle grid
 	if (key.keysym.sym == SDLK_HASH) {
@@ -127,6 +129,12 @@ void Editor::keyboard(const SDL_KeyboardEvent& key) {
 		return;
 	}
 
+
+	if (key.keysym.sym == SDLK_l) {
+		if (ctrl) map.save("map.txt");
+		else map.load("map.txt");
+		return;
+	}
 
 }
 

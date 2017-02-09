@@ -38,6 +38,44 @@ Map::Map() {
 }
 
 
+bool Map::load(const char* name) {
+	FILE* f = fopen(name, "r");
+	if (!f) return false;
+	sectors.clear();
+	char line[4096];
+	while (fgets(line, sizeof(line), f)) {
+		sectors.emplace_back();
+		Sector& s = sectors.back();
+		float x, y;
+		int n;
+		char* p = line;
+		while (sscanf(p, "%f,%f%n", &x, &y, &n) == 2) {
+			p += n;
+			s.walls.push_back({ glm::vec2(x, y) });
+		}
+		fscanf(f, "%f,%f\n", &s.floor_height, &s.ceil_height);
+	}
+	fclose(f);
+	setup_portals();
+	return true;
+}
+
+
+bool Map::save(const char* name) const {
+	FILE* f = fopen(name, "w");
+	if (!f) return false;
+	for (const Sector& s : sectors) {
+		for (const Wall& w : s.walls) {
+			fprintf(f, " %.f,%.f", w.pos.x, w.pos.y);
+		}
+		fprintf(f, "\n");
+		fprintf(f, " %.f,%.f\n", s.floor_height, s.ceil_height);
+	}
+	fclose(f);
+	return true;
+}
+
+
 void Map::setup_portals() {
 	std::unordered_map<std::pair<glm::vec2, glm::vec2>, WallRef> wall_map;
 	for (int i = 0; i < (int) sectors.size(); ++i) {
