@@ -354,14 +354,14 @@ void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const Verte
 			|| _render_state.blend_func_src_alpha != rs.blend_func_src_alpha
 			|| _render_state.blend_func_dst_rgb != rs.blend_func_dst_rgb
 			|| _render_state.blend_func_dst_alpha != rs.blend_func_dst_alpha) {
-				_render_state.blend_func_src_rgb = rs.blend_func_src_rgb;
-				_render_state.blend_func_src_alpha = rs.blend_func_src_alpha;
-				_render_state.blend_func_dst_rgb = rs.blend_func_dst_rgb;
-				_render_state.blend_func_dst_alpha = rs.blend_func_dst_alpha;
+				_render_state.blend_func_src_rgb	= rs.blend_func_src_rgb;
+				_render_state.blend_func_src_alpha	= rs.blend_func_src_alpha;
+				_render_state.blend_func_dst_rgb	= rs.blend_func_dst_rgb;
+				_render_state.blend_func_dst_alpha	= rs.blend_func_dst_alpha;
 				glBlendFuncSeparate(
 						map_to_gl(_render_state.blend_func_src_rgb),
-						map_to_gl(_render_state.blend_func_src_alpha),
 						map_to_gl(_render_state.blend_func_dst_rgb),
+						map_to_gl(_render_state.blend_func_src_alpha),
 						map_to_gl(_render_state.blend_func_dst_alpha));
 			}
 			if (_render_state.blend_equation_rgb != rs.blend_equation_rgb
@@ -413,7 +413,7 @@ void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const Verte
 
 	if (va->_indexed) {
 		glDrawElements(map_to_gl(va->_primitive_type), va->_count, GL_UNSIGNED_INT,
-						reinterpret_cast<void*>(va->_first));
+				reinterpret_cast<void*>(va->_first));
 	}
 	else {
 		glDrawArrays(map_to_gl(va->_primitive_type), va->_first, va->_count);

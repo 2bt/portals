@@ -26,8 +26,9 @@ private:
 	glm::vec2				m_select_pos;
 	std::vector<WallRef>	m_selection;
 
-
 	bool					m_grid_enabled = false;
+
+	bool					m_edit_enabled = false;
 };
 
 

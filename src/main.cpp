@@ -231,6 +231,7 @@ private:
 int main(int argc, char** argv) {
 	rmw::context.init(800, 600, "portal");
 
+	map.load("map.txt");
 
 	renderer2D.init();
 

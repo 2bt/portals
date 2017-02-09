@@ -45,9 +45,16 @@ public:
 
 
 //private:
-
-	std::vector<Sector>	sectors;
-
+	std::vector<Sector>	sectors = {
+		{	{
+				{{ -10,	10	}},
+				{{ 10,	10	}},
+				{{ 10,	-10	}},
+				{{ -10,	-10	}},
+			},
+			0, 10
+		},
+	};
 };
 
 

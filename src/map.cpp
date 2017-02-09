@@ -8,6 +8,7 @@
 #include <glm/gtx/hash.hpp>
 #include <glm/gtx/norm.hpp>
 
+
 namespace std {
 	template <>
 	class hash<std::pair<glm::vec2, glm::vec2>> {
@@ -20,21 +21,7 @@ namespace std {
 
 
 Map::Map() {
-
-	sectors = {
-		{	{
-				{{ -10,	10	}},
-				{{ 10,	10	}},
-				{{ 10,	-10	}},
-				{{ -10,	-10	}},
-			},
-			0, 10
-		},
-	};
-
-
 	setup_portals();
-
 }
 
 
@@ -65,11 +52,8 @@ bool Map::save(const char* name) const {
 	FILE* f = fopen(name, "w");
 	if (!f) return false;
 	for (const Sector& s : sectors) {
-		for (const Wall& w : s.walls) {
-			fprintf(f, " %.f,%.f", w.pos.x, w.pos.y);
-		}
-		fprintf(f, "\n");
-		fprintf(f, " %.f,%.f\n", s.floor_height, s.ceil_height);
+		for (const Wall& w : s.walls) fprintf(f, " %.f,%.f", w.pos.x, w.pos.y);
+		fprintf(f, "\n %.f,%.f\n", s.floor_height, s.ceil_height);
 	}
 	fclose(f);
 	return true;

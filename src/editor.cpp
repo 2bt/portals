@@ -85,6 +85,12 @@ void Editor::merge_sectors() {
 
 void Editor::keyboard(const SDL_KeyboardEvent& key) {
 	if (key.type != SDL_KEYDOWN) return;
+	if (key.keysym.sym == SDLK_TAB) {
+		m_edit_enabled ^= 1;
+		return;
+	}
+	if (!m_edit_enabled) return;
+
 	const uint8_t* ks = SDL_GetKeyboardState(nullptr);
 	bool ctrl = ks[SDL_SCANCODE_LCTRL] || ks[SDL_SCANCODE_RCTRL];
 
@@ -140,6 +146,7 @@ void Editor::keyboard(const SDL_KeyboardEvent& key) {
 
 
 void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
+	if (!m_edit_enabled) return;
 	const uint8_t* ks = SDL_GetKeyboardState(nullptr);
 
 
@@ -267,6 +274,7 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 
 
 void Editor::mouse_wheel(const SDL_MouseWheelEvent& wheel) {
+	if (!m_edit_enabled) return;
 	const uint8_t* ks = SDL_GetKeyboardState(nullptr);
 	if (ks[SDL_SCANCODE_F]) {
 		int nr = -1;
@@ -293,6 +301,7 @@ void Editor::mouse_wheel(const SDL_MouseWheelEvent& wheel) {
 }
 
 void Editor::draw() {
+	if (!m_edit_enabled) return;
 
 	int x, y;
 	uint32_t buttons = SDL_GetMouseState(&x, &y);
@@ -389,7 +398,7 @@ void Editor::draw() {
 
 
 		if (eye.loc.sector_nr == i) {
-			renderer2D.set_color(100, 200, 200, 100);
+			renderer2D.set_color(100, 255, 255, 50);
 			std::vector<glm::vec2> poly;
 			for (const Wall& w : sector.walls) poly.emplace_back(w.pos);
 			triangulate(poly, [](
