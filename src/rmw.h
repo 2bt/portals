@@ -13,27 +13,53 @@
 namespace rmw {
 
 
+// states
+
 struct ClearState {
 	glm::vec4		color;
 };
 
 
+struct Viewport {
+	int x = 0;
+	int y = 0;
+	int w = 0;
+	int h = 0;
+};
+
 enum class DepthTestFunc { Never, Less, Equal, LEqual };
-struct Viewport { int x=0, y=0, w=0, h=0; };
+
+enum class BlendFunc {
+	Zero, One, SrcColor, OneMinusSrcColor, DstColor, OneMinusDstColor,
+	SrcAlpha, OneMinusSrcAlpha, DstAlpha, OneMinusDstAlpha,
+	ConstantColor, OneMinusConstantColor,
+	ConstantAlpha, OneMinusConstantAlph,
+	SrcAlphaSaturate,
+};
+enum class BlendEquation { Add, Subtract, ReverseSubtract };
 
 struct RenderState {
 	Viewport		viewport;
-	bool			depth_test_enabled	= false;
-	DepthTestFunc	depth_test_func		= DepthTestFunc::LEqual;
 
-	float			line_width			= 1;
+	// depth
+	bool			depth_test_enabled		= false;
+	DepthTestFunc	depth_test_func			= DepthTestFunc::LEqual;
 
-	// TODO:
-	// blending
-	// ...
+	// blend
+	bool			blend_enabled			= false;
+	BlendFunc		blend_func_src_rgb		= BlendFunc::One;
+	BlendFunc		blend_func_src_alpha	= BlendFunc::Zero;
+	BlendFunc		blend_func_dst_rgb		= BlendFunc::One;
+	BlendFunc		blend_func_dst_alpha	= BlendFunc::Zero;
+	BlendEquation	blend_equation_rgb		= BlendEquation::Add;
+	BlendEquation	blend_equation_alpha	= BlendEquation::Add;
+	glm::vec4		blend_color;
+
+	float			line_width				= 1;
 };
 
 
+// buffers
 
 enum class BufferHint { StaticDraw, StreamDraw, DynamicDraw };
 
@@ -137,6 +163,8 @@ private:
 };
 
 
+// texture
+
 enum class WrapMode { Clamp, Repeat, ClampZero, MirrowedRepeat };
 enum class FilterMode { Linear, Nearest }; // TODO: mipmap
 
@@ -160,6 +188,8 @@ private:
 	uint32_t		_handle;
 };
 
+
+// shader
 
 class Shader {
 	friend class Context;

@@ -378,6 +378,22 @@ void Editor::draw() {
 	renderer2D.set_point_size(7);
 	for (int i = 0; i < (int) map.sectors.size(); ++i) {
 		Sector& sector = map.sectors[i];
+
+
+		if (eye.loc.sector_nr == i) {
+			renderer2D.set_color(100, 200, 200, 100);
+			std::vector<glm::vec2> poly;
+			for (const Wall& w : sector.walls) poly.emplace_back(w.pos);
+			triangulate(poly, [](
+				const glm::vec2& p1,
+				const glm::vec2& p2,
+				const glm::vec2& p3)
+			{
+				renderer2D.triangle(p1, p2, p3);
+			});
+		}
+
+
 		for (int j = 0; j < (int) sector.walls.size(); ++j) {
 			Wall& w1 = sector.walls[j];
 			Wall& w2 = sector.walls[(j + 1) % sector.walls.size()];

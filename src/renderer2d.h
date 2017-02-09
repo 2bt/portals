@@ -28,6 +28,11 @@ public:
 
 		m_rs.line_width = 1;
 		m_rs.depth_test_enabled = false;
+		m_rs.blend_enabled = true;
+		m_rs.blend_func_src_rgb = rmw::BlendFunc::SrcAlpha;
+		m_rs.blend_func_src_alpha = rmw::BlendFunc::SrcAlpha;
+		m_rs.blend_func_dst_rgb = rmw::BlendFunc::OneMinusSrcAlpha;
+		m_rs.blend_func_dst_alpha = rmw::BlendFunc::OneMinusSrcAlpha;
 
 		m_vb = rmw::context.create_vertex_buffer(rmw::BufferHint::StreamDraw);
 		m_va = rmw::context.create_vertex_array();

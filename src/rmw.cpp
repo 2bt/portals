@@ -8,10 +8,8 @@ namespace rmw {
 
 constexpr uint32_t map_to_gl(ComponentType t) {
 	const uint32_t lut[] = {
-		GL_BYTE, GL_UNSIGNED_BYTE,
-		GL_SHORT, GL_UNSIGNED_SHORT,
-		GL_INT, GL_UNSIGNED_INT,
-		GL_FLOAT, GL_HALF_FLOAT,
+		GL_BYTE, GL_UNSIGNED_BYTE, GL_SHORT, GL_UNSIGNED_SHORT,
+		GL_INT, GL_UNSIGNED_INT, GL_FLOAT, GL_HALF_FLOAT,
 	};
 	return lut[static_cast<int>(t)];
 }
@@ -29,6 +27,20 @@ constexpr uint32_t map_to_gl(PrimitiveType pt) {
 		GL_TRIANGLE_STRIP, GL_TRIANGLE_FAN, GL_TRIANGLES
 	};
 	return lut[static_cast<int>(pt)];
+}
+constexpr uint32_t map_to_gl(BlendFunc bf) {
+	const uint32_t lut[] = {
+		GL_ZERO, GL_ONE, GL_SRC_COLOR, GL_ONE_MINUS_SRC_COLOR, GL_DST_COLOR, GL_ONE_MINUS_DST_COLOR,
+		GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA,
+		GL_CONSTANT_COLOR, GL_ONE_MINUS_CONSTANT_COLOR,
+		GL_CONSTANT_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA,
+		GL_SRC_ALPHA_SATURATE,
+	};
+	return lut[static_cast<int>(bf)];
+}
+constexpr uint32_t map_to_gl(BlendEquation be) {
+	const uint32_t lut[] = { GL_FUNC_ADD, GL_FUNC_SUBTRACT, GL_FUNC_REVERSE_SUBTRACT };
+	return lut[static_cast<int>(be)];
 }
 
 
@@ -332,10 +344,47 @@ void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const Verte
 				glDepthFunc(map_to_gl(_render_state.depth_test_func));
 			}
 		}
-		else {
-			glDisable(GL_DEPTH_TEST);
-		}
+		else glDisable(GL_DEPTH_TEST);
 	}
+	if (_render_state.blend_enabled != rs.blend_enabled) {
+		_render_state.blend_enabled = rs.blend_enabled;
+		if (_render_state.blend_enabled) {
+			glEnable(GL_BLEND);
+			if (_render_state.blend_func_src_rgb != rs.blend_func_src_rgb
+			|| _render_state.blend_func_src_alpha != rs.blend_func_src_alpha
+			|| _render_state.blend_func_dst_rgb != rs.blend_func_dst_rgb
+			|| _render_state.blend_func_dst_alpha != rs.blend_func_dst_alpha) {
+				_render_state.blend_func_src_rgb = rs.blend_func_src_rgb;
+				_render_state.blend_func_src_alpha = rs.blend_func_src_alpha;
+				_render_state.blend_func_dst_rgb = rs.blend_func_dst_rgb;
+				_render_state.blend_func_dst_alpha = rs.blend_func_dst_alpha;
+				glBlendFuncSeparate(
+						map_to_gl(_render_state.blend_func_src_rgb),
+						map_to_gl(_render_state.blend_func_src_alpha),
+						map_to_gl(_render_state.blend_func_dst_rgb),
+						map_to_gl(_render_state.blend_func_dst_alpha));
+			}
+			if (_render_state.blend_equation_rgb != rs.blend_equation_rgb
+			|| _render_state.blend_equation_alpha != rs.blend_equation_alpha) {
+				_render_state.blend_equation_rgb = rs.blend_equation_rgb;
+				_render_state.blend_equation_alpha = rs.blend_equation_alpha;
+				glBlendEquationSeparate(
+						map_to_gl(_render_state.blend_equation_rgb),
+						map_to_gl(_render_state.blend_equation_alpha));
+			}
+			if (_render_state.blend_color != rs.blend_color) {
+				_render_state.blend_color = rs.blend_color;
+				glBlendColor(
+						_render_state.blend_color.r,
+						_render_state.blend_color.g,
+						_render_state.blend_color.b,
+						_render_state.blend_color.a);
+			}
+		}
+		else glDisable(GL_BLEND);
+	}
+
+
 
 	// only consider RenderState::viewport if it's valid
 	const Viewport& vp = rs.viewport.w == 0 ? _viewport : rs.viewport;
