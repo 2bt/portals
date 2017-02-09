@@ -190,6 +190,25 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 				return;
 			}
 
+			if (ks[SDL_SCANCODE_Z]) {
+				map.sectors.push_back({
+					{
+						{glm::vec2(-10,	10 ) + m_cursor},
+						{glm::vec2( 10,	10 ) + m_cursor},
+						{glm::vec2( 10,-10 ) + m_cursor},
+						{glm::vec2(-10,-10 ) + m_cursor},
+					},
+					0, 10
+				});
+				map.setup_portals();
+				m_selection.clear();
+				for (int i = 0; i < 4; ++i) {
+					m_selection.push_back({ (int) map.sectors.size() - 1, i });
+				}
+				return;
+			}
+
+
 			if (ks[SDL_SCANCODE_P]) {
 				eye.loc.pos.x = m_cursor.x;
 				eye.loc.pos.z = m_cursor.y;
@@ -198,7 +217,6 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 					eye.loc.pos.y = map.sectors[eye.loc.sector_nr].floor_height + 4;
 				}
 			}
-
 
 		}
 
