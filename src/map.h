@@ -3,6 +3,13 @@
 #include <vector>
 #include <glm/glm.hpp>
 
+
+struct Location {
+	glm::vec3	pos;
+	int			sector_nr;
+};
+
+
 struct WallRef {
 	int sector_nr;
 	int wall_nr;
@@ -14,6 +21,7 @@ struct WallRef {
 		return sector_nr == rhs.sector_nr && wall_nr == rhs.wall_nr;
 	}
 };
+
 
 struct Wall {
 	glm::vec2 pos;
@@ -28,10 +36,16 @@ struct Sector {
 };
 
 
-struct Location {
-	glm::vec3	pos;
-	int			sector_nr;
+struct Vall {
+	glm::vec2 pos;
+	std::vector<WallRef> refs;
 };
+struct Zector {
+	std::vector<Vall> walls;
+	float floor_height;
+	float ceil_height;
+};
+
 
 
 class Map {
@@ -55,6 +69,9 @@ public:
 			0, 10
 		},
 	};
+
+	std::vector<Zector> zectors;
+
 };
 
 

@@ -38,9 +38,10 @@ void Eye::update() {
 	};
 
 
-	map.clip_move(loc, mov);
+//	map.clip_move(loc, mov);
+	loc.pos += mov;
 
-//	printf("%f %f %f %f %f\n", pos.x, pos.y, pos.z, ang_x, ang_y);
+
 }
 
 

@@ -80,15 +80,10 @@ public:
 		floor_verts.clear();
 		ceil_verts.clear();
 
+/*
+
 		for (int i = 0; i < (int) map.sectors.size(); ++i) {
 			Sector& sector = map.sectors[i];
-
-
-			glm::u8vec4 col(255, 255, 255, 255);
-//			if (i == eye.get_location().sector) {
-//				col.g = 100;
-//				col.b = 100;
-//			}
 
 			// walls
 			for (int j = 0; j < (int) sector.walls.size(); ++j) {
@@ -97,7 +92,6 @@ public:
 				auto& w2 = sector.walls[(j + 1) % sector.walls.size()];
 				auto& p1 = w1.pos;
 				auto& p2 = w2.pos;
-
 
 				// full wall
 				if (w1.next.sector_nr == -1) {
@@ -120,33 +114,17 @@ public:
 			}
 
 
-			// floor and ceiling
-/*
-			auto& p1 = sector.walls[0].pos;
-			for (int i = 2; i < (int) sector.walls.size(); ++i) {
-				auto& p2 = sector.walls[i - 1].pos;
-				auto& p3 = sector.walls[i].pos;
-
-				floor_verts.emplace_back(glm::vec3(p1.x, sector.floor_height, p1.y), p1, col);
-				floor_verts.emplace_back(glm::vec3(p2.x, sector.floor_height, p2.y), p2, col);
-				floor_verts.emplace_back(glm::vec3(p3.x, sector.floor_height, p3.y), p3, col);
-
-				ceil_verts.emplace_back(glm::vec3(p2.x, sector.ceil_height, p2.y), p2);
-				ceil_verts.emplace_back(glm::vec3(p1.x, sector.ceil_height, p1.y), p1);
-				ceil_verts.emplace_back(glm::vec3(p3.x, sector.ceil_height, p3.y), p3);
-			}
-*/
-			// trangulate
+			//trangulate floor and ceiling
 			std::vector<glm::vec2> poly;
 			for (const Wall& w : sector.walls) poly.emplace_back(w.pos);
-			triangulate(poly, [this, &col, &sector](
+			triangulate(poly, [this, &sector](
 				const glm::vec2& p1,
 				const glm::vec2& p2,
 				const glm::vec2& p3)
 			{
-				floor_verts.emplace_back(glm::vec3(p1.x, sector.floor_height, p1.y), p1, col);
-				floor_verts.emplace_back(glm::vec3(p2.x, sector.floor_height, p2.y), p2, col);
-				floor_verts.emplace_back(glm::vec3(p3.x, sector.floor_height, p3.y), p3, col);
+				floor_verts.emplace_back(glm::vec3(p1.x, sector.floor_height, p1.y), p1);
+				floor_verts.emplace_back(glm::vec3(p2.x, sector.floor_height, p2.y), p2);
+				floor_verts.emplace_back(glm::vec3(p3.x, sector.floor_height, p3.y), p3);
 				ceil_verts.emplace_back(glm::vec3(p1.x, sector.ceil_height, p1.y), p1);
 				ceil_verts.emplace_back(glm::vec3(p2.x, sector.ceil_height, p2.y), p2);
 				ceil_verts.emplace_back(glm::vec3(p3.x, sector.ceil_height, p3.y), p3);
@@ -154,6 +132,64 @@ public:
 
 
 		}
+*/
+		// room over room
+		for (int i = 0; i < (int) map.zectors.size(); ++i) {
+			Zector& sector = map.zectors[i];
+
+			// walls
+			for (int j = 0; j < (int) sector.walls.size(); ++j) {
+
+				auto& w1 = sector.walls[j];
+				auto& w2 = sector.walls[(j + 1) % sector.walls.size()];
+				auto& p1 = w1.pos;
+				auto& p2 = w2.pos;
+
+
+/*
+				// full wall
+				if (w1.next.sector_nr == -1) {
+					generate_wall(p1.x, sector.floor_height, p1.y, p2.x, sector.ceil_height, p2.y);
+					continue;
+				}
+
+				auto& s2 = map.zectors[w1.next.sector_nr];
+
+				// floor wall
+				if (sector.floor_height < s2.floor_height) {
+					generate_wall(p1.x, sector.floor_height, p1.y, p2.x, s2.floor_height, p2.y);
+				}
+
+				// ceil wall
+				if (sector.ceil_height > s2.ceil_height) {
+					generate_wall(p1.x, s2.ceil_height, p1.y, p2.x, sector.ceil_height, p2.y);
+				}
+*/
+
+
+
+			}
+
+
+			//trangulate floor and ceiling
+			std::vector<glm::vec2> poly;
+			for (const Vall& w : sector.walls) poly.emplace_back(w.pos);
+			triangulate(poly, [this, &sector](
+				const glm::vec2& p1,
+				const glm::vec2& p2,
+				const glm::vec2& p3)
+			{
+				floor_verts.emplace_back(glm::vec3(p1.x, sector.floor_height, p1.y), p1);
+				floor_verts.emplace_back(glm::vec3(p2.x, sector.floor_height, p2.y), p2);
+				floor_verts.emplace_back(glm::vec3(p3.x, sector.floor_height, p3.y), p3);
+				ceil_verts.emplace_back(glm::vec3(p1.x, sector.ceil_height, p1.y), p1);
+				ceil_verts.emplace_back(glm::vec3(p2.x, sector.ceil_height, p2.y), p2);
+				ceil_verts.emplace_back(glm::vec3(p3.x, sector.ceil_height, p3.y), p3);
+			});
+
+
+		}
+
 
 
 		glm::mat4 mat_perspective = glm::perspective(

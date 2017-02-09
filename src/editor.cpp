@@ -190,6 +190,7 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 				return;
 			}
 
+			// add sector
 			if (ks[SDL_SCANCODE_Z]) {
 				map.sectors.push_back({
 					{
@@ -208,7 +209,7 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 				return;
 			}
 
-
+			// set player position
 			if (ks[SDL_SCANCODE_P]) {
 				eye.loc.pos.x = m_cursor.x;
 				eye.loc.pos.z = m_cursor.y;

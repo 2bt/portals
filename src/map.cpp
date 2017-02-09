@@ -44,6 +44,29 @@ bool Map::load(const char* name) {
 	}
 	fclose(f);
 	setup_portals();
+
+
+	{
+		FILE* f = fopen(name, "r");
+		if (!f) return false;
+		zectors.clear();
+		char line[4096];
+		while (fgets(line, sizeof(line), f)) {
+			zectors.emplace_back();
+			Zector& s = zectors.back();
+			float x, y;
+			int n;
+			char* p = line;
+			while (sscanf(p, "%f,%f%n", &x, &y, &n) == 2) {
+				p += n;
+				s.walls.push_back({ glm::vec2(x, y) });
+			}
+			fscanf(f, "%f,%f\n", &s.floor_height, &s.ceil_height);
+		}
+		fclose(f);
+		setup_portals();
+	}
+
 	return true;
 }
 
@@ -77,8 +100,7 @@ void Map::setup_portals() {
 			else {
 				// init portal
 				WallRef& ref = it->second;
-				w1.next.sector_nr = ref.sector_nr;
-				w1.next.wall_nr = ref.wall_nr;
+				w1.next = ref;
 				Wall& next_wall = sectors[ref.sector_nr].walls[ref.wall_nr];
 				next_wall.next.sector_nr = i;
 				next_wall.next.wall_nr = j;
@@ -86,6 +108,42 @@ void Map::setup_portals() {
 			}
 		}
 	}
+
+
+	{
+		for (Zector& sector : zectors )
+		for (Vall& wall : sector.walls) wall.refs.clear();
+		std::unordered_map<std::pair<glm::vec2, glm::vec2>, std::vector<WallRef>> wall_map;
+		for (int i = 0; i < (int) zectors.size(); ++i) {
+			Zector& sector = zectors[i];
+
+			for (int j = 0; j < (int) sector.walls.size(); ++j) {
+				Vall& w1 = sector.walls[j];
+				Vall& w2 = sector.walls[(j + 1) % sector.walls.size()];
+
+				auto it = wall_map.find(std::make_pair(w2.pos, w1.pos));
+				if (it == wall_map.end()) {
+					wall_map[std::make_pair(w1.pos, w2.pos)] = { { i, j } };
+					continue;
+				}
+
+				// init portal
+				std::vector<WallRef>& refs = it->second;
+				for (WallRef& ref : refs) {
+					Zector& s = zectors[ref.sector_nr];
+					if (s.floor_height >= sector.ceil_height || s.ceil_height <= sector.floor_height) continue;
+
+					// found sector
+					s.walls[ref.wall_nr].refs.push_back({ i, j });
+					w1.refs.push_back(ref);
+
+					// TODO: sort refs according to zecrors[ref.sector_nr].floor_height
+					break;
+				}
+			}
+		}
+	}
+
 
 }
 
