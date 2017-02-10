@@ -60,6 +60,7 @@ void Editor::split_sector() {
 
 
 void Editor::merge_sectors() {
+/*
 	for (int i = 0; i < (int) m_selection.size() - 1; ++i) {
 		if (m_selection[i].sector_nr != m_selection[i].sector_nr) continue;
 		Sector& s = map.sectors[m_selection[i].sector_nr];
@@ -80,6 +81,7 @@ void Editor::merge_sectors() {
 		m_selection.clear();
 		break;
 	}
+*/
 }
 
 
@@ -178,12 +180,13 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 					sector.walls.insert(sector.walls.begin() + ref.wall_nr + 1, { m_cursor });
 					m_selection.push_back({ ref.sector_nr, ref.wall_nr + 1 });
 
-					WallRef& next = sector.walls[ref.wall_nr].next;
-					if (next.sector_nr != -1) {
-						Sector& next_sector = map.sectors[next.sector_nr];
-						next_sector.walls.insert(
-							next_sector.walls.begin() + next.wall_nr + 1, { m_cursor });
-						m_selection.push_back({ next.sector_nr, next.wall_nr + 1 });
+					for (const WallRef& ref : sector.walls[ref.wall_nr].refs) {
+						if (ref.sector_nr != -1) {
+							Sector& s = map.sectors[ref.sector_nr];
+							s.walls.insert(
+								s.walls.begin() + ref.wall_nr + 1, { m_cursor });
+							m_selection.push_back({ ref.sector_nr, ref.wall_nr + 1 });
+						}
 					}
 					map.setup_portals();
 				}
@@ -433,7 +436,7 @@ void Editor::draw() {
 		for (int j = 0; j < (int) sector.walls.size(); ++j) {
 			Wall& w1 = sector.walls[j];
 			Wall& w2 = sector.walls[(j + 1) % sector.walls.size()];
-			if (w1.next.sector_nr == -1) renderer2D.set_color(200, 200, 200);
+			if (w1.refs.empty()) renderer2D.set_color(200, 200, 200);
 			else renderer2D.set_color(200, 0, 0);
 			renderer2D.line(w1.pos, w2.pos);
 		}

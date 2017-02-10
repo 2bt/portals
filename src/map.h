@@ -25,7 +25,7 @@ struct WallRef {
 
 struct Wall {
 	glm::vec2 pos;
-	WallRef	next;
+	std::vector<WallRef> refs;
 };
 
 
@@ -34,18 +34,6 @@ struct Sector {
 	float floor_height;
 	float ceil_height;
 };
-
-
-struct Vall {
-	glm::vec2 pos;
-	std::vector<WallRef> refs;
-};
-struct Zector {
-	std::vector<Vall> walls;
-	float floor_height;
-	float ceil_height;
-};
-
 
 
 class Map {
@@ -69,8 +57,6 @@ public:
 			0, 10
 		},
 	};
-
-	std::vector<Zector> zectors;
 
 };
 

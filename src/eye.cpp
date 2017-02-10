@@ -38,10 +38,7 @@ void Eye::update() {
 	};
 
 
-//	map.clip_move(loc, mov);
-	loc.pos += mov;
-
-
+	map.clip_move(loc, mov);
 }
 
 
