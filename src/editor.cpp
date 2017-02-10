@@ -34,14 +34,10 @@ void Editor::split_sector() {
 		const glm::vec2& p1 = s.walls[(n1 + s.walls.size() - 1) % s.walls.size()].pos - p;
 		const glm::vec2& p2 = s.walls[n2].pos - p;
 		const glm::vec2& p3 = s.walls[(n1 + 1) % s.walls.size()].pos - p;
-//		printf("a) %.f %.f\n", p1.x, p1.y);
-//		printf("b) %.f %.f\n", p2.x, p2.y);
-//		printf("c) %.f %.f\n", p3.x, p3.y);
 		float a1 = atan2f(p1.x * p2.y - p1.y * p2.x, glm::dot(p1, p2));
 		float a2 = atan2f(p1.x * p3.y - p1.y * p3.x, glm::dot(p1, p3));
 		if (a1 < 0) a1 += 2 * M_PI;
 		if (a2 < 0) a2 += 2 * M_PI;
-//		printf("%f %f %d\n", a1*180/M_PI, a2*180/M_PI, a1 < a2);
 		if (a1 < a2) break;
 	}
 	if (i == (int) m_selection.size() - 1) return;
@@ -60,7 +56,6 @@ void Editor::split_sector() {
 
 
 void Editor::merge_sectors() {
-/*
 	for (int i = 0; i < (int) m_selection.size() - 1; ++i) {
 		if (m_selection[i].sector_nr != m_selection[i].sector_nr) continue;
 		Sector& s = map.sectors[m_selection[i].sector_nr];
@@ -68,20 +63,19 @@ void Editor::merge_sectors() {
 		int n2 = m_selection[i + 1].wall_nr;
 		if (n1 != n2 - 1 && !(n1 == 0 && n2 == (int) s.walls.size() - 1)) continue;
 		if (n1 == 0) n1 = n2;
-		Wall& w = s.walls[n1];
-		if (w.next.sector_nr == -1 || w.next.sector_nr == m_selection[i].sector_nr) continue;
-		Sector& s2 = map.sectors[w.next.sector_nr];
-		for (int j = (w.next.wall_nr + 2) % s2.walls.size();
-			j != w.next.wall_nr;
+		Wall w = s.walls[n1];
+		if (w.refs.size() != 1 || w.refs[0].sector_nr == m_selection[i].sector_nr) continue;
+		Sector& s2 = map.sectors[w.refs[0].sector_nr];
+		for (int j = (w.refs[0].wall_nr + 2) % s2.walls.size();
+			j != w.refs[0].wall_nr;
 			j = (j + 1)  % s2.walls.size()) {
 			s.walls.insert(s.walls.begin() + ++n1, s2.walls[j]);
 		}
-		map.sectors.erase(map.sectors.begin() + w.next.sector_nr);
+		map.sectors.erase(map.sectors.begin() + w.refs[0].sector_nr);
 		map.setup_portals();
 		m_selection.clear();
 		break;
 	}
-*/
 }
 
 
@@ -361,12 +355,6 @@ void Editor::draw() {
 	renderer2D.scale(1 / m_zoom);
 	renderer2D.translate(m_scroll);
 
-/*
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_LINE_SMOOTH);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-*/
 
 
 	// grid
@@ -480,18 +468,6 @@ void Editor::draw() {
 		renderer2D.set_color(255, 255, 0);
 		renderer2D.rect(m_cursor, m_select_pos);
 	}
-
-
-
-	// cursor
-//	renderer2D.set_color(255, 255, 255);
-//	renderer2D.line(
-//		m_cursor - glm::vec2(3 * m_zoom, 0),
-//		m_cursor + glm::vec2(3 * m_zoom, 0));
-//	renderer2D.line(
-//		m_cursor - glm::vec2(0, 3 * m_zoom),
-//		m_cursor + glm::vec2(0, 3 * m_zoom));
-
 
 
 	renderer2D.flush();
