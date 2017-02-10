@@ -247,7 +247,6 @@ void Editor::mouse_button(const SDL_MouseButtonEvent& button) {
 				for (int i = 0; i < (int) map.sectors[nr].walls.size(); ++i) {
 					m_selection.push_back({ nr, i });
 				}
-
 			}
 			else {
 				// add walls in selection rect

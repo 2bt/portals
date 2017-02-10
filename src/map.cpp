@@ -73,12 +73,10 @@ void Map::setup_portals() {
 		for (int j = 0; j < (int) sector.walls.size(); ++j) {
 			Wall& w1 = sector.walls[j];
 			Wall& w2 = sector.walls[(j + 1) % sector.walls.size()];
+			wall_map[std::make_pair(w1.pos, w2.pos)].push_back({ i, j });
 
 			auto it = wall_map.find(std::make_pair(w2.pos, w1.pos));
-			if (it == wall_map.end()) {
-				wall_map[std::make_pair(w1.pos, w2.pos)].push_back({ i, j });
-				continue;
-			}
+			if (it == wall_map.end()) continue;
 
 			// init portal
 			std::vector<WallRef>& refs = it->second;
