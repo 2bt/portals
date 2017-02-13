@@ -5,16 +5,23 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
 
+#include "renderer2d.h"
+#include "renderer3d.h"
+
 #include "rmw.h"
+#include "math.h"
 #include "map.h"
 #include "eye.h"
 #include "editor.h"
-#include "math.h"
+
+
+Renderer2D	renderer2D;
+Renderer3D	renderer3D;
+
 
 Eye		eye;
 Editor	editor;
 
-Renderer2D	renderer2D;
 
 
 class MapRenderer {
@@ -40,7 +47,6 @@ public:
 				layout(location = 0) in vec3 in_pos;
 				layout(location = 1) in vec2 in_uv;
 				layout(location = 2) in vec4 in_color;
-
 				uniform mat4 mvp;
 				out vec2 ex_uv;
 				out vec4 ex_color;
@@ -127,7 +133,8 @@ public:
 			rmw::context.get_aspect_ratio(),
 			0.1f, 500.0f);
 
-		shader->set_uniform("mvp", mat_perspective * eye.get_view_mtx());
+		glm::mat4 mat_view = eye.get_view_mtx();
+		shader->set_uniform("mvp", mat_perspective * mat_view);
 
 
 		rmw::RenderState rs;
@@ -148,6 +155,79 @@ public:
 		vertex_array->set_count(floor_verts.size());
 		shader->set_uniform("tex", tex_floor);
 		rmw::context.draw(rs, shader, vertex_array);
+
+
+		//if (0)
+		{
+			// XXX:
+			renderer3D.set_transformation(mat_perspective * mat_view);
+			renderer3D.set_line_width(3);
+			renderer3D.set_point_size(20);
+
+
+			static glm::vec3 orig;
+			static glm::vec3 dir;
+
+			int x, y;
+			int b = SDL_GetMouseState(&x, &y);
+			if (b) {
+				orig = glm::vec3(glm::inverse(mat_view)[3]);
+				glm::vec4 c = glm::vec4(x / (float) rmw::context.get_width() * 2 - 1,
+										y / (float) rmw::context.get_height() * -2 + 1,
+										-1, 1);
+				glm::vec4 v = glm::inverse(mat_perspective * mat_view) * c;
+				dir = glm::normalize(glm::vec3(v) / v.w - orig);
+			}
+
+			renderer3D.set_color(255, 0, 255);
+			renderer3D.point(orig);
+			renderer3D.set_color(0, 0, 255);
+			renderer3D.line(orig, orig + dir * 50.0f);
+
+			// wire frame
+			renderer3D.set_color(255, 0, 0);
+/*
+			for (int i = 0; i < (int) map.sectors.size(); ++i) {
+				Sector& sector = map.sectors[i];
+				for (int j = 0; j < (int) sector.walls.size(); ++j) {
+					auto& w1 = sector.walls[j];
+					auto& w2 = sector.walls[(j + 1) % sector.walls.size()];
+					auto& p1 = w1.pos;
+					auto& p2 = w2.pos;
+
+					float h = sector.ceil_height;
+					for (const WallRef& ref : w1.refs) {
+						const Sector& s = map.sectors[ref.sector_nr];
+						if (s.ceil_height < h) {
+							renderer3D.line(
+								glm::vec3(p1.x, h, p1.y),
+								glm::vec3(p2.x, h, p2.y));
+							renderer3D.line(
+								glm::vec3(p1.x, h, p1.y),
+								glm::vec3(p1.x, s.ceil_height, p1.y));
+							renderer3D.line(
+								glm::vec3(p1.x, s.ceil_height, p1.y),
+								glm::vec3(p2.x, s.ceil_height, p2.y));
+						}
+						h = s.floor_height;
+					}
+					if (h > sector.floor_height) {
+						renderer3D.line(
+							glm::vec3(p1.x, h, p1.y),
+							glm::vec3(p2.x, h, p2.y));
+						renderer3D.line(
+							glm::vec3(p1.x, h, p1.y),
+							glm::vec3(p1.x, sector.floor_height, p1.y));
+						renderer3D.line(
+							glm::vec3(p1.x, sector.floor_height, p1.y),
+							glm::vec3(p2.x, sector.floor_height, p2.y));
+					}
+				}
+			}
+*/
+			renderer3D.flush();
+		}
+
 	}
 
 
@@ -195,6 +275,7 @@ int main(int argc, char** argv) {
 	map.load("map.txt");
 
 	renderer2D.init();
+	renderer3D.init();
 
 
 	renderer.init();

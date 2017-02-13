@@ -3,6 +3,9 @@
 #include "map.h"
 #include "math.h"
 
+#include "renderer2d.h"
+#include "renderer3d.h"
+
 #include <algorithm>
 #include <glm/gtx/norm.hpp>
 
@@ -134,7 +137,10 @@ void Editor::keyboard(const SDL_KeyboardEvent& key) {
 
 	if (key.keysym.sym == SDLK_l) {
 		if (ctrl) map.save("map.txt");
-		else map.load("map.txt");
+		else {
+			m_selection.clear();
+			map.load("map.txt");
+		}
 		return;
 	}
 

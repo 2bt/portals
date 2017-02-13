@@ -1,7 +1,9 @@
 #pragma once
 
-#include "renderer2d.h"
 #include "map.h"
+
+#include <SDL2/SDL.h>
+
 
 class Editor {
 public:

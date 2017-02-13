@@ -68,10 +68,10 @@ public:
 	}
 
 	void set_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a=255) {
-		m_color[0] = r;
-		m_color[1] = g;
-		m_color[2] = b;
-		m_color[3] = a;
+		m_color.r = r;
+		m_color.g = g;
+		m_color.b = b;
+		m_color.a = a;
 	}
 	void set_point_size(float s) {
 		m_point_size = s;
@@ -134,14 +134,14 @@ private:
 	glm::mat3x2& transform() { return m_transforms[m_transform_index]; }
 
 	struct Vert {
-		glm::vec2				pos;
-		std::array<uint8_t, 4>	color;
-		float size;
-		Vert(const glm::vec2& p, const std::array<uint8_t, 4>& c, float s=0)
+		glm::vec2		pos;
+		glm::u8vec4		color;
+		float			size;
+		Vert(const glm::vec2& p, const glm::u8vec4& c, float s=0)
 			: pos(p), color(c), size(s) {}
 	};
 
-	std::array<uint8_t, 4> 		m_color;
+	glm::u8vec4					m_color;
 	float						m_point_size = 1;
 
 	std::vector<Vert>			m_verts;
