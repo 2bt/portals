@@ -64,6 +64,13 @@ bool Map::save(const char* name) const {
 void Map::setup_portals() {
 	for (Sector& sector : sectors) {
 		for (Wall& wall : sector.walls) wall.refs.clear();
+
+		for (int j = 0; j < (int) sector.walls.size();) {
+			Wall& w1 = sector.walls[j];
+			Wall& w2 = sector.walls[(j + 1) % sector.walls.size()];
+			if (w1.pos == w2.pos) sector.walls.erase(sector.walls.begin() + j);
+			else ++j;
+		}
 	}
 
 	std::unordered_map<std::pair<glm::vec2, glm::vec2>, std::vector<WallRef>> wall_map;

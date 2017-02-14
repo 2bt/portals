@@ -3,6 +3,10 @@
 #include <glm/gtx/norm.hpp>
 
 
+inline float cross(const glm::vec2& a, const glm::vec2& b) {
+	return a.x * b.y - a.y * b.x;
+}
+
 inline bool point_in_rect(const glm::vec2& p, glm::vec2 r1, glm::vec2 r2) {
 	if (r1.x > r2.x) std::swap(r1.x, r2.x);
 	if (r1.y > r2.y) std::swap(r1.y, r2.y);
@@ -13,8 +17,8 @@ inline bool on_same_side(const glm::vec2& a, const glm::vec2& b, const glm::vec2
 	glm::vec2 p = d - c;
 	glm::vec2 ca = a - c;
 	glm::vec2 cb = b - c;
-	float l = p.x * ca.y - p.y * ca.x;
-	float m = p.x * cb.y - p.y * cb.x;
+	float l = cross(p, ca);
+	float m = cross(p, cb);
 	return l * m >= 0;
 }
 
@@ -32,7 +36,7 @@ inline float point_to_line_segment_distance(const glm::vec2& p, glm::vec2 l1, gl
 inline bool is_oriented_cw(const glm::vec2& a, const glm::vec2& b, const glm::vec2& c) {
 	glm::vec2 ab = b - a;
 	glm::vec2 ac = c - a;
-	return ab.y * ac.x - ab.x * ac.y >= 0;
+	return cross(ac, ab) >= 0;
 }
 
 inline bool any_point_in_triangle(
