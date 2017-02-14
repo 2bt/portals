@@ -44,6 +44,8 @@ public:
 	void setup_portals();
 	bool load(const char* name);
 	bool save(const char* name) const;
+	float ray_intersect(const Location& loc, const glm::vec3& dir,
+						WallRef& ref, glm::vec3& normal) const;
 
 
 //private:

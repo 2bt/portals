@@ -23,65 +23,6 @@ Eye		eye;
 Editor	editor;
 
 
-#include <limits>
-
-float ray_intersect(const Location& loc, const glm::vec3& dir, WallRef& ref, glm::vec3& normal) {
-
-	ref.sector_nr = loc.sector_nr;
-	float factor = std::numeric_limits<float>::infinity();
-
-	Sector& s = map.sectors[ref.sector_nr];
-	glm::vec2 p(loc.pos.x, loc.pos.z);
-	glm::vec2 d(dir.x, dir.z);
-	for (int i = 0; i < (int) s.walls.size(); ++i) {
-		const Wall& w1 = s.walls[i];
-		const Wall& w2 = s.walls[(i + 1) % s.walls.size()];
-		glm::vec2 ww = w2.pos - w1.pos;
-		glm::vec2 pw = p - w1.pos;
-		float c = cross(ww, d);
-		if (c <= 0) continue;
-		float t = cross(pw, d) / c;
-		float u = cross(pw, ww) / c;
-		if (u > 0 && u < factor && t >= 0 && t <= 1) {
-			factor = u;
-			ref.wall_nr = i;
-			normal = glm::vec3(ww.y, 0, -ww.x);
-		}
-	}
-
-	float y = loc.pos.y + dir.y * factor;
-
-	// check ceiling
-	if (y > s.ceil_height) {
-		factor *=  (s.ceil_height - loc.pos.y) / (y - loc.pos.y);
-		normal = glm::vec3(0, -1, 0);
-		ref.wall_nr = -1;
-		return factor;
-	}
-	else if (y < s.floor_height) {
-		factor *=  (s.floor_height - loc.pos.y) / (y - loc.pos.y);
-		normal = glm::vec3(0, 1, 0);
-		ref.wall_nr = -2;
-		return factor;
-	}
-	else {
-		const Wall& w = s.walls[ref.wall_nr];
-		if (w.refs.empty()) {
-			normal = glm::normalize(normal);
-			return factor;
-		}
-
-		// TODO: check w.refs
-
-
-	}
-
-	printf("portal\n");
-	return factor;
-}
-
-
-
 
 class MapRenderer {
 public:
@@ -239,7 +180,7 @@ public:
 				dir = glm::normalize(glm::vec3(v) / v.w - orig);
 
 				WallRef ref;
-				float f = ray_intersect(eye.get_location(), dir, ref, mark_normal);
+				float f = map.ray_intersect(eye.get_location(), dir, ref, mark_normal);
 				mark = eye.get_location().pos + dir * f;
 			}
 
@@ -250,10 +191,10 @@ public:
 			renderer3D.set_color(0, 100, 0);
 			renderer3D.line(mark, mark + mark_normal * 3.0f);
 
-			renderer3D.set_color(255, 0, 255);
-			renderer3D.point(orig);
-			renderer3D.set_color(0, 0, 255);
-			renderer3D.line(orig, orig + dir * 50.0f);
+//			renderer3D.set_color(255, 0, 255);
+//			renderer3D.point(orig);
+//			renderer3D.set_color(0, 0, 255);
+//			renderer3D.line(orig, orig + dir * 50.0f);
 
 			// wire frame
 			renderer3D.set_color(255, 0, 0);

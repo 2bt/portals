@@ -1,8 +1,10 @@
 #include "map.h"
 #include "eye.h"
+#include "math.h"
 
 #include <cstdio>
 #include <algorithm>
+#include <limits>
 #include <queue>
 #include <unordered_map>
 #include <glm/gtx/hash.hpp>
@@ -203,6 +205,70 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 	}
 
 */
+}
+
+
+float Map::ray_intersect(	const Location& loc, const glm::vec3& dir,
+							WallRef& ref, glm::vec3& normal) const {
+
+	ref.sector_nr = loc.sector_nr;
+	float min_factor = 0;
+	glm::vec2 p(loc.pos.x, loc.pos.z);
+	glm::vec2 d(dir.x, dir.z);
+
+	for (;;) {
+		const Sector& s = sectors[ref.sector_nr];
+		float factor = std::numeric_limits<float>::infinity();
+		for (int i = 0; i < (int) s.walls.size(); ++i) {
+			const Wall& w1 = s.walls[i];
+			const Wall& w2 = s.walls[(i + 1) % s.walls.size()];
+			glm::vec2 ww = w2.pos - w1.pos;
+			glm::vec2 pw = p - w1.pos;
+			float c = cross(ww, d);
+			if (c <= 0) continue;
+			float t = cross(pw, d) / c;
+			float u = cross(pw, ww) / c;
+			if (u > min_factor && u < factor && t >= 0 && t <= 1) {
+				factor = u;
+				ref.wall_nr = i;
+				normal = glm::vec3(ww.y, 0, -ww.x);
+			}
+		}
+
+		float y = loc.pos.y + dir.y * factor;
+
+		// ceiling
+		if (y > s.ceil_height) {
+			factor *=  (s.ceil_height - loc.pos.y) / (y - loc.pos.y);
+			normal = glm::vec3(0, -1, 0);
+			ref.wall_nr = -1;
+			return factor;
+		}
+		// floor
+		if (y < s.floor_height) {
+			factor *=  (s.floor_height - loc.pos.y) / (y - loc.pos.y);
+			normal = glm::vec3(0, 1, 0);
+			ref.wall_nr = -2;
+			return factor;
+		}
+
+		const Wall& w = s.walls[ref.wall_nr];
+		bool portal = false;
+		for (const WallRef& r : w.refs) {
+			const Sector& s2 = sectors[r.sector_nr];
+			if (y < s2.ceil_height && y > s2.floor_height) {
+				ref = r;
+				portal = true;
+				min_factor = factor;
+				break;
+			}
+		}
+		if (!portal) {
+			normal = glm::normalize(normal);
+			return factor;
+		}
+	}
+	return 0;
 }
 
 
