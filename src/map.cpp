@@ -132,84 +132,88 @@ int Map::pick_sector(const glm::vec2& p) const {
 
 
 void Map::clip_move(Location& loc, const glm::vec3& mov) const {
-	loc.pos += mov;
-/*
+//	loc.pos += mov;
+
 	float radius = 1.6;
 	float floor_dist = 5;
 	float ceil_dist = 1;
 
+	glm::vec3 new_pos = loc.pos;
 
 	// ignore height movement
 	std::vector<int> visited;
 	std::queue<int> todo({ loc.sector_nr });
-	loc.pos.x += mov.x;
-	loc.pos.z += mov.z;
-	glm::vec2 pos(loc.pos.x, loc.pos.z);
+	new_pos.x += mov.x;
+	new_pos.z += mov.z;
+	glm::vec2 pos(new_pos.x, new_pos.z);
 	while (!todo.empty()) {
 		int nr = todo.front();
 		todo.pop();
 		if (nr == -1) continue;
 		visited.push_back(nr);
-		const Sector& sector = map.sectors[nr];
+		const Sector& s = map.sectors[nr];
 
-		for (int j = 0; j < (int) sector.walls.size(); ++j) {
-			const Wall& wall = sector.walls[j];
-			const Wall& wall2 = sector.walls[(j + 1) % sector.walls.size()];
-			glm::vec2 ww = wall2.pos - wall.pos;
-			glm::vec2 pw = pos - wall.pos;
+		for (int j = 0; j < (int) s.walls.size(); ++j) {
+			const Wall& w = s.walls[j];
+			const Wall& w2 = s.walls[(j + 1) % s.walls.size()];
+			glm::vec2 ww = w2.pos - w.pos;
+			glm::vec2 pw = pos - w.pos;
 
 			float u = glm::dot(pw, ww) / glm::length2(ww);
 			u = std::max(0.0f, std::min(1.0f, u));
-			glm::vec2 p = wall.pos + ww * u;
+			glm::vec2 p = w.pos + ww * u;
 			glm::vec2 normal = pos - p;
 			float dst = glm::length(normal);
 			if (dst < radius) {
 
-				normal *= radius / dst - 1;
 
-				if (wall.next.sector_nr == -1) {
-					// wall
-					pos += normal;
-				}
-				else {
-					// portal
-					const Sector& s = sectors[wall.next.sector_nr];
+				bool pass = false;
+				for (const WallRef& r : w.refs) {
+					const Sector& s2 = sectors[r.sector_nr];
+					if (new_pos.y + ceil_dist <= s2.ceil_height
+					&&  new_pos.y - floor_dist >= s2.floor_height) {
+						pass = true;
 
-					if (loc.pos.y - floor_dist < s.floor_height
-					||  loc.pos.y + ceil_dist > s.ceil_height) {
-						pos += normal;
-					}
-					else {
-						if (std::find(visited.begin(), visited.end(), wall.next.sector_nr) == visited.end()) {
-							todo.push(wall.next.sector_nr);
-
-							// have we passed through the portal?
-							float cross = glm::dot(glm::vec2(ww.y, -ww.x), pw);
-							if (cross < 0) loc.sector_nr = wall.next.sector_nr;
+						if (std::find(visited.begin(), visited.end(), r.sector_nr) == visited.end()) {
+							todo.push(r.sector_nr);
 						}
+						break;
 					}
+				}
+
+				if (!pass) {
+					normal *= radius / dst - 1;
+					pos += normal;
 				}
 			}
 		}
 	}
-	loc.pos.x = pos.x;
-	loc.pos.z = pos.y;
+
+	new_pos.x = pos.x;
+	new_pos.z = pos.y;
 
 	// handle height
-	loc.pos.y += mov.y;
+	new_pos.y += mov.y;
 	for (int nr : visited) {
 		const Sector& sector = map.sectors[nr];
 		// clamp height
-		if (loc.pos.y - floor_dist < sector.floor_height)	loc.pos.y = sector.floor_height + floor_dist;
-		if (loc.pos.y + ceil_dist > sector.ceil_height)		loc.pos.y = sector.ceil_height - ceil_dist;
+		if (new_pos.y - floor_dist < sector.floor_height)	new_pos.y = sector.floor_height + floor_dist;
+		if (new_pos.y + ceil_dist > sector.ceil_height)		new_pos.y = sector.ceil_height - ceil_dist;
 	}
 
-*/
+
+	WallRef ref;
+	glm::vec3 normal;
+
+	ray_intersect(loc, new_pos - loc.pos, ref, normal, 1);
+	loc.sector_nr = ref.sector_nr;
+	loc.pos = new_pos;
+
 }
 
 
 float Map::ray_intersect(	const Location& loc, const glm::vec3& dir,
-							WallRef& ref, glm::vec3& normal) const {
+							WallRef& ref, glm::vec3& normal, float max_factor) const {
 
 	ref.sector_nr = loc.sector_nr;
 	float min_factor = 0;
@@ -218,7 +222,7 @@ float Map::ray_intersect(	const Location& loc, const glm::vec3& dir,
 
 	for (;;) {
 		const Sector& s = sectors[ref.sector_nr];
-		float factor = std::numeric_limits<float>::infinity();
+		float factor = max_factor;
 		for (int i = 0; i < (int) s.walls.size(); ++i) {
 			const Wall& w1 = s.walls[i];
 			const Wall& w2 = s.walls[(i + 1) % s.walls.size()];
@@ -234,6 +238,8 @@ float Map::ray_intersect(	const Location& loc, const glm::vec3& dir,
 				normal = glm::vec3(ww.y, 0, -ww.x);
 			}
 		}
+
+		if (factor == max_factor) return max_factor;
 
 		float y = loc.pos.y + dir.y * factor;
 
