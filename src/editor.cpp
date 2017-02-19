@@ -144,6 +144,29 @@ void Editor::keyboard(const SDL_KeyboardEvent& key) {
 		return;
 	}
 
+
+	int i = (key.keysym.sym == SDLK_COMMA) - (key.keysym.sym == SDLK_PERIOD);
+	if (i != 0) {
+		if (ks[SDL_SCANCODE_F]) {
+			int nr = -1;
+			for (const WallRef& ref : m_selection) {
+				if (ref.sector_nr == nr) continue;
+				nr = ref.sector_nr;
+				map.sectors[nr].floor_height += i;
+			}
+			return;
+		}
+		if (ks[SDL_SCANCODE_C]) {
+			int nr = -1;
+			for (const WallRef& ref : m_selection) {
+				if (ref.sector_nr == nr) continue;
+				nr = ref.sector_nr;
+				map.sectors[nr].ceil_height += i;
+			}
+			return;
+		}
+	}
+
 }
 
 

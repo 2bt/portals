@@ -47,66 +47,66 @@ constexpr uint32_t map_to_gl(BlendEquation be) {
 
 
 VertexArray::VertexArray() {
-	_first = 0;
-	_count = 0;
-	_indexed = false;
-	_primitive_type = PrimitiveType::Triangles;
-	glGenVertexArrays(1, &_va);
+	m_first = 0;
+	m_count = 0;
+	m_indexed = false;
+	m_primitive_type = PrimitiveType::Triangles;
+	glGenVertexArrays(1, &m_va);
 }
 VertexArray::~VertexArray() {
-	glDeleteVertexArrays(1, &_va);
+	glDeleteVertexArrays(1, &m_va);
 }
 
 
 void VertexArray::set_attribute(int i, const VertexBuffer::Ptr& vb, ComponentType component_type,
 								int component_count, bool normalized, int offset, int stride) {
-	glBindVertexArray(_va);
+	glBindVertexArray(m_va);
 	vb->bind();
 	glEnableVertexAttribArray(i);
 	glVertexAttribPointer(i, component_count, map_to_gl(component_type), normalized, stride, reinterpret_cast<void*>(offset));
 }
 void VertexArray::set_attribute(int i, float f) {
-	glBindVertexArray(_va);
+	glBindVertexArray(m_va);
 	glDisableVertexAttribArray(i);
 	glVertexAttrib1f(i, f);
 }
 void VertexArray::set_attribute(int i, const glm::vec2& v) {
-	glBindVertexArray(_va);
+	glBindVertexArray(m_va);
 	glDisableVertexAttribArray(i);
 	glVertexAttrib2fv(i, &v.x);
 }
 void VertexArray::set_attribute(int i, const glm::vec3& v) {
-	glBindVertexArray(_va);
+	glBindVertexArray(m_va);
 	glDisableVertexAttribArray(i);
 	glVertexAttrib3fv(i, &v.x);
 }
 void VertexArray::set_attribute(int i, const glm::vec4& v) {
-	glBindVertexArray(_va);
+	glBindVertexArray(m_va);
 	glDisableVertexAttribArray(i);
 	glVertexAttrib4fv(i, &v.x);
 }
 
 void VertexArray::set_index_buffer(const IndexBuffer& ib) {
-	_indexed = true;
-	glBindVertexArray(_va);
+	m_indexed = true;
+	glBindVertexArray(m_va);
 	ib.bind();
 }
 
 
-GpuBuffer::GpuBuffer(uint32_t target, BufferHint hint) : _target(target), _hint(hint), _size(0) {
-	glGenBuffers(1, &_b);
+GpuBuffer::GpuBuffer(uint32_t target, BufferHint hint) : m_target(target), m_hint(hint), m_size(0) {
+	glGenBuffers(1, &m_b);
 }
 GpuBuffer::~GpuBuffer() {
-	glDeleteBuffers(1, &_b);
+	glDeleteBuffers(1, &m_b);
 }
 void GpuBuffer::bind() const {
-	glBindBuffer(_target, _b);
+	glBindBuffer(m_target, m_b);
 }
 void GpuBuffer::init_data(const void* data, int size) {
-	_size = size;
+	m_size = size;
 	glBindVertexArray(0);
 	bind();
-	glBufferData(_target, _size, data, map_to_gl(_hint));
+	glBufferData(m_target, m_size, data, map_to_gl(m_hint));
 }
 
 VertexBuffer::VertexBuffer(BufferHint hint) : GpuBuffer(GL_ARRAY_BUFFER, hint) {}
@@ -149,34 +149,34 @@ bool Shader::init(const char* vs, const char* fs) {
 		glDeleteShader(v);
 		return false;
 	}
-	_program = glCreateProgram();
+	m_program = glCreateProgram();
 
-	glAttachShader(_program, v);
-	glAttachShader(_program, f);
+	glAttachShader(m_program, v);
+	glAttachShader(m_program, f);
 	glDeleteShader(v);
 	glDeleteShader(f);
-	glLinkProgram(_program);
+	glLinkProgram(m_program);
 
 
 	// attributes
 	int count;
-	glGetProgramiv(_program, GL_ACTIVE_ATTRIBUTES, &count);
+	glGetProgramiv(m_program, GL_ACTIVE_ATTRIBUTES, &count);
 	for (int i = 0; i < count; ++i) {
 		char name[128];
 		int size;
 		uint32_t type;
-		glGetActiveAttrib(_program, i, sizeof(name), nullptr, &size, &type, name);
-		_attributes.push_back({ name, type, glGetAttribLocation(_program, name) });
+		glGetActiveAttrib(m_program, i, sizeof(name), nullptr, &size, &type, name);
+		m_attributes.push_back({ name, type, glGetAttribLocation(m_program, name) });
 	}
 
 	// uniforms
-	glGetProgramiv(_program, GL_ACTIVE_UNIFORMS, &count);
+	glGetProgramiv(m_program, GL_ACTIVE_UNIFORMS, &count);
 	for (int i = 0; i < count; ++i) {
 		char name[128];
 		int size; // > 1 for arrays
 		uint32_t type;
-		glGetActiveUniform(_program, i, sizeof(name), nullptr, &size, &type, name);
-		int location = glGetUniformLocation(_program, name);
+		glGetActiveUniform(m_program, i, sizeof(name), nullptr, &size, &type, name);
+		int location = glGetUniformLocation(m_program, name);
 		Uniform::Ptr u;
 		switch (type) {
 		case GL_FLOAT:		u = std::make_unique<UniformExtend<float>>(name, type, location); break;
@@ -190,7 +190,7 @@ bool Shader::init(const char* vs, const char* fs) {
 			fprintf(stderr, "Error: uniform '%s' has unknown type\n", name);
 			assert(false);
 		}
-		_uniforms.push_back(std::move(u));
+		m_uniforms.push_back(std::move(u));
 	}
 
 	return true;
@@ -198,7 +198,7 @@ bool Shader::init(const char* vs, const char* fs) {
 
 
 Shader::~Shader() {
-	glDeleteProgram(_program);
+	glDeleteProgram(m_program);
 }
 
 
@@ -238,8 +238,8 @@ void Shader::UniformTexture2D::update() const {
 */
 Texture2D::Texture2D(SDL_Surface* img) {
 
-	glGenTextures(1, &_handle);
-	glBindTexture(GL_TEXTURE_2D, _handle); // TODO: caching via Context
+	glGenTextures(1, &m_handle);
+	glBindTexture(GL_TEXTURE_2D, m_handle); // TODO: caching via Context
 
 //	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 //	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -265,8 +265,8 @@ Texture2D::Texture2D(SDL_Surface* img) {
 
 bool Context::init(int width, int height, const char* title)
 {
-	_viewport.w = width;
-	_viewport.h = height;
+	m_viewport.w = width;
+	m_viewport.h = height;
 
 	SDL_Init(SDL_INIT_VIDEO);
 	IMG_Init(IMG_INIT_PNG);
@@ -276,13 +276,13 @@ bool Context::init(int width, int height, const char* title)
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
 
-	_window = SDL_CreateWindow(title,
+	m_window = SDL_CreateWindow(title,
 			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-			_viewport.w, _viewport.h,
+			m_viewport.w, m_viewport.h,
 			SDL_WINDOW_OPENGL /*| SDL_WINDOW_RESIZABLE*/);
 
 	SDL_GL_SetSwapInterval(-1); // v-sync
-	_gl_context = SDL_GL_CreateContext(_window);
+	m_gl_context = SDL_GL_CreateContext(m_window);
 
 	glewExperimental = true;
 	glewInit();
@@ -292,16 +292,16 @@ bool Context::init(int width, int height, const char* title)
 
 
 	// initialize the reder state according to opengl's initial state
-	_render_state.depth_test_enabled = 0;
-	_render_state.depth_test_func = DepthTestFunc::Less;
+	m_render_state.depth_test_enabled = 0;
+	m_render_state.depth_test_func = DepthTestFunc::Less;
 
 	return true;
 }
 
 Context::~Context()
 {
-	SDL_GL_DeleteContext(_gl_context);
-	SDL_DestroyWindow(_window);
+	SDL_GL_DeleteContext(m_gl_context);
+	SDL_DestroyWindow(m_window);
 	SDL_Quit();
 	IMG_Quit();
 }
@@ -311,8 +311,8 @@ bool Context::poll_event(SDL_Event& e) {
 	if (!SDL_PollEvent(&e)) return false;
 	if (e.type == SDL_WINDOWEVENT
 	&&  e.window.event == SDL_WINDOWEVENT_RESIZED) {
-		_viewport.w = e.window.data1;
-		_viewport.h = e.window.data2;
+		m_viewport.w = e.window.data1;
+		m_viewport.h = e.window.data2;
 	}
 
 	return true;
@@ -321,9 +321,9 @@ bool Context::poll_event(SDL_Event& e) {
 
 void Context::clear(const ClearState& cs) {
 
-	if (_clear_state.color != cs.color) {
-		_clear_state.color = cs.color;
-		glClearColor(_clear_state.color.x, _clear_state.color.y, _clear_state.color.z, _clear_state.color.w);
+	if (m_clear_state.color != cs.color) {
+		m_clear_state.color = cs.color;
+		glClearColor(m_clear_state.color.x, m_clear_state.color.y, m_clear_state.color.z, m_clear_state.color.w);
 	}
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -332,53 +332,53 @@ void Context::clear(const ClearState& cs) {
 
 
 void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const VertexArray::Ptr& va) {
-	if (va->_count == 0) return;
+	if (va->m_count == 0) return;
 
 	// sync render state
-	if (_render_state.depth_test_enabled != rs.depth_test_enabled) {
-		_render_state.depth_test_enabled = rs.depth_test_enabled;
-		if (_render_state.depth_test_enabled) {
+	if (m_render_state.depth_test_enabled != rs.depth_test_enabled) {
+		m_render_state.depth_test_enabled = rs.depth_test_enabled;
+		if (m_render_state.depth_test_enabled) {
 			glEnable(GL_DEPTH_TEST);
-			if (_render_state.depth_test_func != rs.depth_test_func) {
-				_render_state.depth_test_func = rs.depth_test_func;
-				glDepthFunc(map_to_gl(_render_state.depth_test_func));
+			if (m_render_state.depth_test_func != rs.depth_test_func) {
+				m_render_state.depth_test_func = rs.depth_test_func;
+				glDepthFunc(map_to_gl(m_render_state.depth_test_func));
 			}
 		}
 		else glDisable(GL_DEPTH_TEST);
 	}
-	if (_render_state.blend_enabled != rs.blend_enabled) {
-		_render_state.blend_enabled = rs.blend_enabled;
-		if (_render_state.blend_enabled) {
+	if (m_render_state.blend_enabled != rs.blend_enabled) {
+		m_render_state.blend_enabled = rs.blend_enabled;
+		if (m_render_state.blend_enabled) {
 			glEnable(GL_BLEND);
-			if (_render_state.blend_func_src_rgb != rs.blend_func_src_rgb
-			|| _render_state.blend_func_src_alpha != rs.blend_func_src_alpha
-			|| _render_state.blend_func_dst_rgb != rs.blend_func_dst_rgb
-			|| _render_state.blend_func_dst_alpha != rs.blend_func_dst_alpha) {
-				_render_state.blend_func_src_rgb	= rs.blend_func_src_rgb;
-				_render_state.blend_func_src_alpha	= rs.blend_func_src_alpha;
-				_render_state.blend_func_dst_rgb	= rs.blend_func_dst_rgb;
-				_render_state.blend_func_dst_alpha	= rs.blend_func_dst_alpha;
+			if (m_render_state.blend_func_src_rgb != rs.blend_func_src_rgb
+			|| m_render_state.blend_func_src_alpha != rs.blend_func_src_alpha
+			|| m_render_state.blend_func_dst_rgb != rs.blend_func_dst_rgb
+			|| m_render_state.blend_func_dst_alpha != rs.blend_func_dst_alpha) {
+				m_render_state.blend_func_src_rgb	= rs.blend_func_src_rgb;
+				m_render_state.blend_func_src_alpha	= rs.blend_func_src_alpha;
+				m_render_state.blend_func_dst_rgb	= rs.blend_func_dst_rgb;
+				m_render_state.blend_func_dst_alpha	= rs.blend_func_dst_alpha;
 				glBlendFuncSeparate(
-						map_to_gl(_render_state.blend_func_src_rgb),
-						map_to_gl(_render_state.blend_func_dst_rgb),
-						map_to_gl(_render_state.blend_func_src_alpha),
-						map_to_gl(_render_state.blend_func_dst_alpha));
+						map_to_gl(m_render_state.blend_func_src_rgb),
+						map_to_gl(m_render_state.blend_func_dst_rgb),
+						map_to_gl(m_render_state.blend_func_src_alpha),
+						map_to_gl(m_render_state.blend_func_dst_alpha));
 			}
-			if (_render_state.blend_equation_rgb != rs.blend_equation_rgb
-			|| _render_state.blend_equation_alpha != rs.blend_equation_alpha) {
-				_render_state.blend_equation_rgb = rs.blend_equation_rgb;
-				_render_state.blend_equation_alpha = rs.blend_equation_alpha;
+			if (m_render_state.blend_equation_rgb != rs.blend_equation_rgb
+			|| m_render_state.blend_equation_alpha != rs.blend_equation_alpha) {
+				m_render_state.blend_equation_rgb = rs.blend_equation_rgb;
+				m_render_state.blend_equation_alpha = rs.blend_equation_alpha;
 				glBlendEquationSeparate(
-						map_to_gl(_render_state.blend_equation_rgb),
-						map_to_gl(_render_state.blend_equation_alpha));
+						map_to_gl(m_render_state.blend_equation_rgb),
+						map_to_gl(m_render_state.blend_equation_alpha));
 			}
-			if (_render_state.blend_color != rs.blend_color) {
-				_render_state.blend_color = rs.blend_color;
+			if (m_render_state.blend_color != rs.blend_color) {
+				m_render_state.blend_color = rs.blend_color;
 				glBlendColor(
-						_render_state.blend_color.r,
-						_render_state.blend_color.g,
-						_render_state.blend_color.b,
-						_render_state.blend_color.a);
+						m_render_state.blend_color.r,
+						m_render_state.blend_color.g,
+						m_render_state.blend_color.b,
+						m_render_state.blend_color.a);
 			}
 		}
 		else glDisable(GL_BLEND);
@@ -387,43 +387,48 @@ void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const Verte
 
 
 	// only consider RenderState::viewport if it's valid
-	const Viewport& vp = rs.viewport.w == 0 ? _viewport : rs.viewport;
-	if (memcmp(&_render_state.viewport, &vp, sizeof(Viewport)) != 0) {
-		_render_state.viewport = vp;
-		glViewport( _render_state.viewport.x,
-					_render_state.viewport.y,
-					_render_state.viewport.w,
-					_render_state.viewport.h);
+	const Viewport& vp = rs.viewport.w == 0 ? m_viewport : rs.viewport;
+	if (memcmp(&m_render_state.viewport, &vp, sizeof(Viewport)) != 0) {
+		m_render_state.viewport = vp;
+		glViewport( m_render_state.viewport.x,
+					m_render_state.viewport.y,
+					m_render_state.viewport.w,
+					m_render_state.viewport.h);
 	}
-	if (_render_state.line_width != rs.line_width) {
-		_render_state.line_width = rs.line_width;
-		glLineWidth(_render_state.line_width);
+	if (m_render_state.line_width != rs.line_width) {
+		m_render_state.line_width = rs.line_width;
+		glLineWidth(m_render_state.line_width);
 	}
 
 
 	// sync shader
-	if (_shader != shader.get()) {
-		_shader = shader.get();
-		glUseProgram(_shader->_program);
+	if (m_shader != shader.get()) {
+		m_shader = shader.get();
+		glUseProgram(m_shader->m_program);
 	}
-	_shader->update_uniforms();
+	m_shader->update_uniforms();
 
 
-	glBindVertexArray(va->_va);
+	glBindVertexArray(va->m_va);
 
-	if (va->_indexed) {
-		glDrawElements(map_to_gl(va->_primitive_type), va->_count, GL_UNSIGNED_INT,
-				reinterpret_cast<void*>(va->_first));
+	if (va->m_indexed) {
+		glDrawElements(map_to_gl(va->m_primitive_type), va->m_count, GL_UNSIGNED_INT,
+				reinterpret_cast<void*>(va->m_first));
 	}
 	else {
-		glDrawArrays(map_to_gl(va->_primitive_type), va->_first, va->_count);
+		glDrawArrays(map_to_gl(va->m_primitive_type), va->m_first, va->m_count);
 	}
 
 }
 
 
 void Context::flip_buffers() const {
-	SDL_GL_SwapWindow(_window);
+	SDL_GL_SwapWindow(m_window);
+}
+
+
+Texture2D::Ptr Context::create_texture_2D(SDL_Surface* img) const {
+	return Texture2D::Ptr(new Texture2D(img));
 }
 
 

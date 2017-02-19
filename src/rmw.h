@@ -70,7 +70,7 @@ public:
 
 	void init_data(const void* data, int size);
 
-	int size() const { return _size; }
+	int size() const { return m_size; }
 
 protected:
 	GpuBuffer(const GpuBuffer&) = delete;
@@ -79,10 +79,10 @@ protected:
 
 	void bind() const;
 
-	uint32_t	_target;
-	BufferHint	_hint;
-	int			_size;
-	uint32_t	_b;
+	uint32_t	m_target;
+	BufferHint	m_hint;
+	int			m_size;
+	uint32_t	m_b;
 };
 
 
@@ -133,10 +133,10 @@ public:
 
 	~VertexArray();
 
-	void set_first(int i) { _first = i; };
-	void set_count(int i) { _count = i; };
-	void set_primitive_type(PrimitiveType t) { _primitive_type = t; };
-	PrimitiveType get_primitive_type() const { return _primitive_type; };
+	void set_first(int i) { m_first = i; };
+	void set_count(int i) { m_count = i; };
+	void set_primitive_type(PrimitiveType t) { m_primitive_type = t; };
+	PrimitiveType get_primitive_type() const { return m_primitive_type; };
 
 	void set_attribute(int i, const VertexBuffer::Ptr& vb, ComponentType component_type,
 						int component_count, bool normalized, int offset, int stride);
@@ -155,11 +155,11 @@ private:
 	VertexArray& operator=(const VertexArray&) = delete;
 	VertexArray();
 
-	int						_first;
-	int						_count;
-	bool					_indexed;
-	PrimitiveType			_primitive_type;
-	uint32_t				_va;
+	int						m_first;
+	int						m_count;
+	bool					m_indexed;
+	PrimitiveType			m_primitive_type;
+	uint32_t				m_va;
 };
 
 
@@ -185,7 +185,7 @@ public:
 private:
 	Texture2D(SDL_Surface* img);
 
-	uint32_t		_handle;
+	uint32_t		m_handle;
 };
 
 
@@ -200,7 +200,7 @@ public:
 
 	template<class T>
 	void set_uniform(const std::string& name, const T& value) {
-		for (auto& u : _uniforms) {
+		for (auto& u : m_uniforms) {
 			if (u->name == name) {
 				auto* ue = dynamic_cast<UniformExtend<T>*>(u.get());
 				assert(ue);
@@ -214,7 +214,7 @@ public:
 		assert(false);
 	}
 	void set_uniform(const std::string& name, const Texture2D::Ptr& texture) {
-		for (auto& u : _uniforms) {
+		for (auto& u : m_uniforms) {
 			if (u->name == name) {
 				auto* ue = dynamic_cast<UniformTexture2D*>(u.get());
 				assert(ue);
@@ -253,14 +253,7 @@ private:
 	struct UniformTexture2D : Uniform {
 		UniformTexture2D(const std::string& name, uint32_t type, int location) : Uniform(name, type, location) {}
 		void update() const override;
-//		void update() const override {
-//			if (!dirty) return;
-//			dirty = false;
-////			gl_uniform(location, value);
-//		}
-		void set(const Texture2D::Ptr& texture) {
-			handle = texture->_handle;
-		}
+		void set(const Texture2D::Ptr& texture) { handle = texture->m_handle; }
 		uint32_t		handle;
 	};
 
@@ -273,14 +266,14 @@ private:
 	};
 
 	void update_uniforms() const {
-		for (auto& u : _uniforms) u->update();
+		for (auto& u : m_uniforms) u->update();
 	}
 
 
 
-	uint32_t					_program = 0;
-	std::vector<Attribute>		_attributes;
-	std::vector<Uniform::Ptr>	_uniforms;
+	uint32_t					m_program = 0;
+	std::vector<Attribute>		m_attributes;
+	std::vector<Uniform::Ptr>	m_uniforms;
 };
 
 
@@ -293,17 +286,15 @@ public:
 
 	bool poll_event(SDL_Event& e);
 
-	int get_width()  const { return _viewport.w; }
-	int get_height() const { return _viewport.h; }
-	float get_aspect_ratio() const { return _viewport.w / (float) _viewport.h; }
+	int get_width()  const { return m_viewport.w; }
+	int get_height() const { return m_viewport.h; }
+	float get_aspect_ratio() const { return m_viewport.w / (float) m_viewport.h; }
 
 
 	void clear(const ClearState& cs);
 	void draw(const RenderState& rs, const Shader::Ptr& shader, const VertexArray::Ptr& va);
 	void flip_buffers() const;
 
-
-	// NOTE: don't use std::make_unique because of private constructors
 
 	Shader::Ptr create_shader(const char* vs, const char* fs) const {
 		Shader::Ptr s(new Shader());
@@ -323,18 +314,19 @@ public:
 		return VertexArray::Ptr(new VertexArray());
 	}
 
+	Texture2D::Ptr create_texture_2D(SDL_Surface* img) const;
 	Texture2D::Ptr create_texture_2D(const char* file) const;
 
 
 private:
 
-	SDL_Window*		_window;
-	Viewport		_viewport;
-	SDL_GLContext	_gl_context;
+	SDL_Window*		m_window;
+	Viewport		m_viewport;
+	SDL_GLContext	m_gl_context;
 
-	RenderState		_render_state;
-	ClearState		_clear_state;
-	const Shader*	_shader;
+	RenderState		m_render_state;
+	ClearState		m_clear_state;
+	const Shader*	m_shader;
 };
 
 
