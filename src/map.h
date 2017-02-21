@@ -69,6 +69,7 @@ public:
 							WallRef& ref, glm::vec3& normal,
 							float max_factor=std::numeric_limits<float>::infinity()) const;
 
+//private:
 
 	std::vector<Sector>	sectors = {
 		{	{
@@ -80,7 +81,7 @@ public:
 			0, 10
 		},
 	};
-private:
+
 	void	setup_sector_faces(Sector& s);
 	Atlas	shadow_atlas;
 

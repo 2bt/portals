@@ -33,21 +33,26 @@ public:
 			R"(#version 330
 				layout(location = 0) in vec3 in_pos;
 				layout(location = 1) in vec2 in_uv;
+				layout(location = 1) in vec2 in_uv2;
 				uniform mat4 mvp;
 				out vec2 ex_uv;
+				out vec2 ex_uv2;
 				out float ex_depth;
 				void main() {
 					gl_Position = mvp * vec4(in_pos, 1.0);
 					ex_uv = in_uv;
+					ex_uv2 = in_uv2;
 					ex_depth = gl_Position.z;
 				})",
 			R"(#version 330
 				in vec2 ex_uv;
+				in vec2 ex_uv2;
 				in float ex_depth;
 				uniform sampler2D tex;
+				uniform sampler2D shadow;
 				out vec4 out_color;
 				void main() {
-					vec4 c = texture(tex, ex_uv);
+					vec4 c = texture(tex, ex_uv) * texture(shadow, ex_uv2);
 					out_color = vec4(c.rgb * pow(0.98, ex_depth), c.a);
 				})");
 
@@ -56,25 +61,26 @@ public:
 		vertex_array->set_primitive_type(rmw::PrimitiveType::Triangles);
 		vertex_array->set_attribute(0, vertex_buffer, rmw::ComponentType::Float, 3, false, 0, sizeof(MapVertex));
 		vertex_array->set_attribute(1, vertex_buffer, rmw::ComponentType::Float, 2, false, 12, sizeof(MapVertex));
+		vertex_array->set_attribute(2, vertex_buffer, rmw::ComponentType::Float, 2, false, 20, sizeof(MapVertex));
 
-		tex_wall  = rmw::context.create_texture_2D("media/wall.png");
-		tex_floor = rmw::context.create_texture_2D("media/floor.png");
-		tex_ceil  = rmw::context.create_texture_2D("media/ceil.png");
+		textures[0] = rmw::context.create_texture_2D("media/wall.png");
+		textures[1] = rmw::context.create_texture_2D("media/floor.png");
+		textures[2] = rmw::context.create_texture_2D("media/ceil.png");
+		shadow_map = rmw::context.create_texture_2D(map.shadow_atlas.m_surfaces[0]);
+		shader->set_uniform("shadow", shadow_map);
+
 	}
 
 	void draw() {
 
-		wall_verts.clear();
-		floor_verts.clear();
-		ceil_verts.clear();
+		for (Mesh& m : meshes) m.clear();
 
 		for (int i = 0; i < (int) map.sectors.size(); ++i) {
 			const Sector& s = map.sectors[i];
 
 			for (const MapFace& f : s.faces) {
-				if (f.tex_nr == 0) wall_verts.insert(wall_verts.end(), f.verts.begin(), f.verts.end());
-				if (f.tex_nr == 1) floor_verts.insert(floor_verts.end(), f.verts.begin(), f.verts.end());
-				if (f.tex_nr == 2) ceil_verts.insert(ceil_verts.end(), f.verts.begin(), f.verts.end());
+				Mesh& m = meshes[f.tex_nr];
+				m.insert(m.end(), f.verts.begin(), f.verts.end());
 			}
 		}
 
@@ -91,21 +97,12 @@ public:
 		rmw::RenderState rs;
 		rs.depth_test_enabled = true;
 
-
-		vertex_buffer->init_data(wall_verts);
-		vertex_array->set_count(wall_verts.size());
-		shader->set_uniform("tex", tex_wall);
-		rmw::context.draw(rs, shader, vertex_array);
-
-		vertex_buffer->init_data(ceil_verts);
-		vertex_array->set_count(ceil_verts.size());
-		shader->set_uniform("tex", tex_ceil);
-		rmw::context.draw(rs, shader, vertex_array);
-
-		vertex_buffer->init_data(floor_verts);
-		vertex_array->set_count(floor_verts.size());
-		shader->set_uniform("tex", tex_floor);
-		rmw::context.draw(rs, shader, vertex_array);
+		for (int i = 0; i < (int) meshes.size(); ++i) {
+			vertex_buffer->init_data(meshes[i]);
+			vertex_array->set_count(meshes[i].size());
+			shader->set_uniform("tex", textures[i]);
+			rmw::context.draw(rs, shader, vertex_array);
+		}
 
 
 		//if (0)
@@ -155,19 +152,16 @@ public:
 
 
 private:
-
-	std::vector<MapVertex> wall_verts;
-	std::vector<MapVertex> ceil_verts;
-	std::vector<MapVertex> floor_verts;
+	typedef	std::vector<MapVertex>	Mesh;
 
 
-	rmw::Shader::Ptr		shader;
-	rmw::VertexBuffer::Ptr	vertex_buffer;
-	rmw::VertexArray::Ptr	vertex_array;
+	rmw::Shader::Ptr					shader;
+	rmw::VertexBuffer::Ptr				vertex_buffer;
+	rmw::VertexArray::Ptr				vertex_array;
 
-	rmw::Texture2D::Ptr		tex_wall;
-	rmw::Texture2D::Ptr		tex_ceil;
-	rmw::Texture2D::Ptr		tex_floor;
+	std::array<Mesh, 3>					meshes;
+	std::array<rmw::Texture2D::Ptr, 3>	textures;
+	rmw::Texture2D::Ptr					shadow_map;
 
 } renderer;
 

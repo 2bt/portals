@@ -24,7 +24,7 @@ public:
 	AtlasRegion		allocate_region(int w, int h);
 	void			save();
 
-private:
+//private:
 
 	std::vector<SDL_Surface*>			m_surfaces;
 	std::array<int, SURFACE_SIZE>		m_columns;
