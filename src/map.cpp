@@ -24,7 +24,7 @@ namespace std {
 
 
 enum {
-	SHADOW_DETAIL = 4
+	SHADOW_DETAIL = 2
 };
 
 
@@ -47,7 +47,12 @@ void Map::setup_sector_faces(Sector& s) {
 
 		s.faces.emplace_back();
 		MapFace& face = s.faces.back();
+
 		face.tex_nr = 0;
+		int w = std::ceil(glm::distance(p1, p2) * SHADOW_DETAIL) + 1;
+		int h = std::ceil((y1 - y2) * SHADOW_DETAIL) + 1;
+		face.shadow = shadow_atlas.allocate_region(w, h);
+
 		face.verts.emplace_back(glm::vec3(p1.x, y1, p1.y), glm::vec2(u1, y1));
 		face.verts.emplace_back(glm::vec3(p2.x, y2, p2.y), glm::vec2(u2, y2));
 		face.verts.emplace_back(glm::vec3(p1.x, y2, p1.y), glm::vec2(u1, y2));
@@ -55,9 +60,6 @@ void Map::setup_sector_faces(Sector& s) {
 		face.verts.emplace_back(glm::vec3(p2.x, y1, p2.y), glm::vec2(u2, y1));
 		face.verts.emplace_back(glm::vec3(p2.x, y2, p2.y), glm::vec2(u2, y2));
 
-		int w = std::ceil(glm::distance(p1, p2) * SHADOW_DETAIL);
-		int h = std::ceil((y1 - y2) * SHADOW_DETAIL);
-		face.shadow = shadow_atlas.allocate_region(w, h);
 	};
 	for (int j = 0; j < (int) s.walls.size(); ++j) {
 		auto& w = s.walls[j];
@@ -93,11 +95,24 @@ void Map::setup_sector_faces(Sector& s) {
 			min.y = std::min(min.y, w.pos.y);
 		}
 	}
-	glm::ivec2 size = glm::ceil((max - min) * (float) SHADOW_DETAIL);
+	glm::ivec2 size = glm::ceil((max - min) * (float) SHADOW_DETAIL) + glm::vec2(1);
 
 	s.faces.resize(s.faces.size() + 2);
 	MapFace& floor_face = s.faces[s.faces.size() - 2];
 	MapFace& ceil_face = s.faces[s.faces.size() - 1];
+
+	floor_face.mat[0] = glm::vec4(1.0f / SHADOW_DETAIL, 0, 0, 0);
+	floor_face.mat[1] = glm::vec4(0, 1.0f / SHADOW_DETAIL, 0, 0);
+	floor_face.mat[2] = glm::vec4(0, 0, 1.0f / SHADOW_DETAIL, 0);
+	floor_face.mat[3] = glm::vec4(min.x, s.floor_height, min.y, 1);
+
+//	printf("min %f %f\n", min.x, min.y);
+//	printf("size %d %d\n", size.x, size.y);
+//	auto q = floor_face.mat * glm::vec4(0, 0, 0, 1);
+//	printf("q %f %f %f\n", q.x, q.y, q.z);
+//	q = floor_face.mat * glm::vec4(1, 0, 0, 1);
+//	printf("q %f %f %f\n", q.x, q.y, q.z);
+
 
 	floor_face.shadow = shadow_atlas.allocate_region(size.x, size.y);
 	floor_face.tex_nr = 1;
@@ -107,9 +122,17 @@ void Map::setup_sector_faces(Sector& s) {
 
 	triangulate(poly, [&s, &floor_face, &ceil_face](const glm::vec2& p1, const glm::vec2& p2, const glm::vec2& p3)
 	{
-		floor_face.verts.emplace_back(glm::vec3(p1.x, s.floor_height, p1.y), p1);
-		floor_face.verts.emplace_back(glm::vec3(p2.x, s.floor_height, p2.y), p2);
-		floor_face.verts.emplace_back(glm::vec3(p3.x, s.floor_height, p3.y), p3);
+		glm::mat4 m = glm::inverse(floor_face.mat);
+		auto t1 = m * glm::vec4(p1.x, s.floor_height, p1.y, 1);
+		auto t2 = m * glm::vec4(p2.x, s.floor_height, p2.y, 1);
+		auto t3 = m * glm::vec4(p3.x, s.floor_height, p3.y, 1);
+		glm::vec2 q1 = glm::vec2(t1.x + floor_face.shadow.x + 0.5, t1.z + floor_face.shadow.y + 0.5) / (float) Atlas::SURFACE_SIZE;
+		glm::vec2 q2 = glm::vec2(t2.x + floor_face.shadow.x + 0.5, t2.z + floor_face.shadow.y + 0.5) / (float) Atlas::SURFACE_SIZE;
+		glm::vec2 q3 = glm::vec2(t3.x + floor_face.shadow.x + 0.5, t3.z + floor_face.shadow.y + 0.5) / (float) Atlas::SURFACE_SIZE;
+
+		floor_face.verts.emplace_back(glm::vec3(p1.x, s.floor_height, p1.y), p1, q1);
+		floor_face.verts.emplace_back(glm::vec3(p2.x, s.floor_height, p2.y), p2, q2);
+		floor_face.verts.emplace_back(glm::vec3(p3.x, s.floor_height, p3.y), p3, q3);
 
 		ceil_face.verts.emplace_back(glm::vec3(p1.x, s.ceil_height, p1.y), p1);
 		ceil_face.verts.emplace_back(glm::vec3(p3.x, s.ceil_height, p3.y), p3);

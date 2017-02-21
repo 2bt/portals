@@ -33,7 +33,7 @@ public:
 			R"(#version 330
 				layout(location = 0) in vec3 in_pos;
 				layout(location = 1) in vec2 in_uv;
-				layout(location = 1) in vec2 in_uv2;
+				layout(location = 2) in vec2 in_uv2;
 				uniform mat4 mvp;
 				out vec2 ex_uv;
 				out vec2 ex_uv2;
@@ -52,7 +52,7 @@ public:
 				uniform sampler2D shadow;
 				out vec4 out_color;
 				void main() {
-					vec4 c = texture(tex, ex_uv) * texture(shadow, ex_uv2);
+					vec4 c = texture(tex, ex_uv) * 0.1 + texture(shadow, ex_uv2);
 					out_color = vec4(c.rgb * pow(0.98, ex_depth), c.a);
 				})");
 
@@ -68,7 +68,6 @@ public:
 		textures[2] = rmw::context.create_texture_2D("media/ceil.png");
 		shadow_map = rmw::context.create_texture_2D(map.shadow_atlas.m_surfaces[0]);
 		shader->set_uniform("shadow", shadow_map);
-
 	}
 
 	void draw() {

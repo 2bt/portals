@@ -57,13 +57,14 @@ AtlasRegion Atlas::allocate_region(int w, int h) {
 	r.w = w;
 	r.h = h;
 
+
+	// fill region with random color
 	glm::u8vec4 color;
 	color.r = rand() % 256;
 	color.g = rand() % 256;
 	color.b = rand() % 256;
 	color.a = 255;
 	SDL_Surface* s = m_surfaces.back();
-
 	for (int x = r.x; x < r.x + r.w; ++x) {
 		for (int y = r.y; y < r.y + r.h; ++y) {
 			glm::u8vec4 * p = (glm::u8vec4 *) ((uint8_t * ) s->pixels + y * s->pitch + x * sizeof(glm::u8vec4));
