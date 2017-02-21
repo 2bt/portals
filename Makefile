@@ -15,7 +15,7 @@ obj/%.o: src/%.cpp Makefile
 
 
 $(TRG): $(OBJ) Makefile
-	$(CXX) $(OBJ) $(LF) -o $@
+	$(CXX) $(OBJ) -o $@ $(LF)
 
 
 clean:
