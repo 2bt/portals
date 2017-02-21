@@ -2,6 +2,8 @@
 #include "eye.h"
 #include "math.h"
 
+#include "atlas.h"
+
 #include <cstdio>
 #include <algorithm>
 #include <limits>
@@ -22,8 +24,51 @@ namespace std {
 }
 
 
+enum {
+	SHADOW_DETAIL = 4
+};
+
 Map::Map() {
-	setup_portals();
+	load("map.txt");
+
+
+	// shadow mapping
+	Atlas atlas;
+	for (const Sector& s : sectors) {
+		glm::vec2 max;
+		glm::vec2 min;
+		int h = (s.ceil_height - s.floor_height) * SHADOW_DETAIL;
+		for (int j = 0; j < (int) s.walls.size(); ++j) {
+
+			bool needs_shadow = true;
+			const Wall& w1 = s.walls[j];
+			if (w1.refs.size() == 1) {
+				const Sector& s2 = sectors[w1.refs[0].sector_nr];
+				if (s2.floor_height <= s.floor_height && s2.ceil_height >= s.ceil_height) {
+					needs_shadow = false;
+				}
+			}
+
+			if (needs_shadow) {
+				const Wall& w2 = s.walls[(j + 1) % s.walls.size()];
+				int w = std::ceil(glm::distance(w1.pos, w2.pos) * SHADOW_DETAIL);
+				atlas.allocate_region(w, h);
+			}
+
+			if (j == 0) max = min = w1.pos;
+			else {
+				max.x = std::max(max.x, w1.pos.x);
+				max.y = std::max(max.y, w1.pos.y);
+				min.x = std::min(min.x, w1.pos.x);
+				min.y = std::min(min.y, w1.pos.y);
+			}
+		}
+		glm::vec2 b = glm::ceil((max - min) * (float) SHADOW_DETAIL);
+		atlas.allocate_region(b.x, b.y);
+		atlas.allocate_region(b.x, b.y);
+	}
+	atlas.save();
+
 }
 
 

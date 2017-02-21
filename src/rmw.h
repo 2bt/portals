@@ -29,6 +29,8 @@ struct Viewport {
 
 enum class DepthTestFunc { Never, Less, Equal, LEqual };
 
+enum class CullFace { Front, Back, BackAndFront };
+
 enum class BlendFunc {
 	Zero, One, SrcColor, OneMinusSrcColor, DstColor, OneMinusDstColor,
 	SrcAlpha, OneMinusSrcAlpha, DstAlpha, OneMinusDstAlpha,
@@ -38,12 +40,17 @@ enum class BlendFunc {
 };
 enum class BlendEquation { Add, Subtract, ReverseSubtract };
 
+
 struct RenderState {
 	Viewport		viewport;
 
 	// depth
 	bool			depth_test_enabled		= false;
 	DepthTestFunc	depth_test_func			= DepthTestFunc::LEqual;
+
+	// cull face
+	bool			cull_face_enabled		= true;
+	CullFace		cull_face				= CullFace::Back;
 
 	// blend
 	bool			blend_enabled			= false;
@@ -319,6 +326,7 @@ public:
 
 
 private:
+	void sync_state(const RenderState& rs);
 
 	SDL_Window*		m_window;
 	Viewport		m_viewport;

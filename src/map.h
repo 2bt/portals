@@ -36,6 +36,16 @@ struct Sector {
 };
 
 
+struct MapVertex {
+	glm::vec3		pos;
+	glm::vec2		uv;
+	glm::vec2		uv2;
+	MapVertex(const glm::vec3& pos, const glm::vec2& uv, const glm::vec2& uv2)
+		: pos(pos), uv(uv), uv2(uv2)
+	{}
+};
+
+
 class Map {
 public:
 	Map();

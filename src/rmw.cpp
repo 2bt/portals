@@ -42,6 +42,10 @@ constexpr uint32_t map_to_gl(BlendEquation be) {
 	const uint32_t lut[] = { GL_FUNC_ADD, GL_FUNC_SUBTRACT, GL_FUNC_REVERSE_SUBTRACT };
 	return lut[static_cast<int>(be)];
 }
+constexpr uint32_t map_to_gl(CullFace cf) {
+	const uint32_t lut[] = { GL_FRONT, GL_BACK, GL_FRONT_AND_BACK };
+	return lut[static_cast<int>(cf)];
+}
 
 
 
@@ -292,7 +296,8 @@ bool Context::init(int width, int height, const char* title)
 
 
 	// initialize the reder state according to opengl's initial state
-	m_render_state.depth_test_enabled = 0;
+	m_render_state.cull_face_enabled = false;
+	m_render_state.depth_test_enabled = false;
 	m_render_state.depth_test_func = DepthTestFunc::Less;
 
 	return true;
@@ -330,61 +335,79 @@ void Context::clear(const ClearState& cs) {
 }
 
 
+void Context::sync_state(const RenderState& rs) {
+	// depth
+	if (m_render_state.depth_test_enabled != rs.depth_test_enabled) {
+		m_render_state.depth_test_enabled = rs.depth_test_enabled;
+		if (m_render_state.depth_test_enabled) glEnable(GL_DEPTH_TEST);
+		else glDisable(GL_DEPTH_TEST);
+	}
+	if (m_render_state.depth_test_enabled) {
+		if (m_render_state.depth_test_func != rs.depth_test_func) {
+			m_render_state.depth_test_func = rs.depth_test_func;
+			glDepthFunc(map_to_gl(m_render_state.depth_test_func));
+		}
+	}
+
+	// cull face
+	if (m_render_state.cull_face_enabled != rs.cull_face_enabled) {
+		m_render_state.cull_face_enabled = rs.cull_face_enabled;
+		if (m_render_state.cull_face_enabled) glEnable(GL_CULL_FACE);
+		else glDisable(GL_CULL_FACE);
+	}
+	if (m_render_state.cull_face_enabled) {
+		if (m_render_state.cull_face != rs.cull_face) {
+			glCullFace(map_to_gl(m_render_state.cull_face));
+
+		}
+	}
+
+	// blend
+	if (m_render_state.blend_enabled != rs.blend_enabled) {
+		m_render_state.blend_enabled = rs.blend_enabled;
+		if (m_render_state.blend_enabled) glEnable(GL_BLEND);
+		else glDisable(GL_BLEND);
+	}
+	if (m_render_state.blend_enabled) {
+		if ( m_render_state.blend_func_src_rgb != rs.blend_func_src_rgb
+		|| m_render_state.blend_func_src_alpha != rs.blend_func_src_alpha
+		|| m_render_state.blend_func_dst_rgb != rs.blend_func_dst_rgb
+		|| m_render_state.blend_func_dst_alpha != rs.blend_func_dst_alpha) {
+			m_render_state.blend_func_src_rgb	= rs.blend_func_src_rgb;
+			m_render_state.blend_func_src_alpha	= rs.blend_func_src_alpha;
+			m_render_state.blend_func_dst_rgb	= rs.blend_func_dst_rgb;
+			m_render_state.blend_func_dst_alpha	= rs.blend_func_dst_alpha;
+			glBlendFuncSeparate(
+					map_to_gl(m_render_state.blend_func_src_rgb),
+					map_to_gl(m_render_state.blend_func_dst_rgb),
+					map_to_gl(m_render_state.blend_func_src_alpha),
+					map_to_gl(m_render_state.blend_func_dst_alpha));
+		}
+		if (m_render_state.blend_equation_rgb != rs.blend_equation_rgb
+		|| m_render_state.blend_equation_alpha != rs.blend_equation_alpha) {
+			m_render_state.blend_equation_rgb = rs.blend_equation_rgb;
+			m_render_state.blend_equation_alpha = rs.blend_equation_alpha;
+			glBlendEquationSeparate(
+					map_to_gl(m_render_state.blend_equation_rgb),
+					map_to_gl(m_render_state.blend_equation_alpha));
+		}
+		if (m_render_state.blend_color != rs.blend_color) {
+			m_render_state.blend_color = rs.blend_color;
+			glBlendColor(
+					m_render_state.blend_color.r,
+					m_render_state.blend_color.g,
+					m_render_state.blend_color.b,
+					m_render_state.blend_color.a);
+		}
+	}
+
+}
+
 
 void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const VertexArray::Ptr& va) {
 	if (va->m_count == 0) return;
 
-	// sync render state
-	if (m_render_state.depth_test_enabled != rs.depth_test_enabled) {
-		m_render_state.depth_test_enabled = rs.depth_test_enabled;
-		if (m_render_state.depth_test_enabled) {
-			glEnable(GL_DEPTH_TEST);
-			if (m_render_state.depth_test_func != rs.depth_test_func) {
-				m_render_state.depth_test_func = rs.depth_test_func;
-				glDepthFunc(map_to_gl(m_render_state.depth_test_func));
-			}
-		}
-		else glDisable(GL_DEPTH_TEST);
-	}
-	if (m_render_state.blend_enabled != rs.blend_enabled) {
-		m_render_state.blend_enabled = rs.blend_enabled;
-		if (m_render_state.blend_enabled) {
-			glEnable(GL_BLEND);
-			if (m_render_state.blend_func_src_rgb != rs.blend_func_src_rgb
-			|| m_render_state.blend_func_src_alpha != rs.blend_func_src_alpha
-			|| m_render_state.blend_func_dst_rgb != rs.blend_func_dst_rgb
-			|| m_render_state.blend_func_dst_alpha != rs.blend_func_dst_alpha) {
-				m_render_state.blend_func_src_rgb	= rs.blend_func_src_rgb;
-				m_render_state.blend_func_src_alpha	= rs.blend_func_src_alpha;
-				m_render_state.blend_func_dst_rgb	= rs.blend_func_dst_rgb;
-				m_render_state.blend_func_dst_alpha	= rs.blend_func_dst_alpha;
-				glBlendFuncSeparate(
-						map_to_gl(m_render_state.blend_func_src_rgb),
-						map_to_gl(m_render_state.blend_func_dst_rgb),
-						map_to_gl(m_render_state.blend_func_src_alpha),
-						map_to_gl(m_render_state.blend_func_dst_alpha));
-			}
-			if (m_render_state.blend_equation_rgb != rs.blend_equation_rgb
-			|| m_render_state.blend_equation_alpha != rs.blend_equation_alpha) {
-				m_render_state.blend_equation_rgb = rs.blend_equation_rgb;
-				m_render_state.blend_equation_alpha = rs.blend_equation_alpha;
-				glBlendEquationSeparate(
-						map_to_gl(m_render_state.blend_equation_rgb),
-						map_to_gl(m_render_state.blend_equation_alpha));
-			}
-			if (m_render_state.blend_color != rs.blend_color) {
-				m_render_state.blend_color = rs.blend_color;
-				glBlendColor(
-						m_render_state.blend_color.r,
-						m_render_state.blend_color.g,
-						m_render_state.blend_color.b,
-						m_render_state.blend_color.a);
-			}
-		}
-		else glDisable(GL_BLEND);
-	}
-
-
+	sync_state(rs);
 
 	// only consider RenderState::viewport if it's valid
 	const Viewport& vp = rs.viewport.w == 0 ? m_viewport : rs.viewport;

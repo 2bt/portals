@@ -30,12 +30,10 @@ public:
 	struct Vert {
 		glm::vec3		pos;
 		glm::vec2		uv;
-		glm::u8vec4		col;
 
 		Vert(	const glm::vec3& pos,
-				const glm::vec2& uv,
-				const glm::u8vec4& col = glm::u8vec4(255, 255, 255, 255))
-			: pos(pos), uv(uv), col(col)
+				const glm::vec2& uv)
+			: pos(pos), uv(uv)
 		{}
 	};
 
@@ -46,25 +44,21 @@ public:
 			R"(#version 330
 				layout(location = 0) in vec3 in_pos;
 				layout(location = 1) in vec2 in_uv;
-				layout(location = 2) in vec4 in_color;
 				uniform mat4 mvp;
 				out vec2 ex_uv;
-				out vec4 ex_color;
 				out float ex_depth;
 				void main() {
 					gl_Position = mvp * vec4(in_pos, 1.0);
 					ex_uv = in_uv;
-					ex_color = in_color;
 					ex_depth = gl_Position.z;
 				})",
 			R"(#version 330
 				in vec2 ex_uv;
-				in vec4 ex_color;
 				in float ex_depth;
 				uniform sampler2D tex;
 				out vec4 out_color;
 				void main() {
-					vec4 c = texture(tex, ex_uv) * ex_color;
+					vec4 c = texture(tex, ex_uv);
 					out_color = vec4(c.rgb * pow(0.98, ex_depth), c.a);
 				})");
 
@@ -73,7 +67,6 @@ public:
 		vertex_array->set_primitive_type(rmw::PrimitiveType::Triangles);
 		vertex_array->set_attribute(0, vertex_buffer, rmw::ComponentType::Float, 3, false, 0, sizeof(Vert));
 		vertex_array->set_attribute(1, vertex_buffer, rmw::ComponentType::Float, 2, false, 12, sizeof(Vert));
-		vertex_array->set_attribute(2, vertex_buffer, rmw::ComponentType::Uint8, 4, true, 20, sizeof(Vert));
 
 		tex_wall  = rmw::context.create_texture_2D("media/wall.png");
 		tex_floor = rmw::context.create_texture_2D("media/floor.png");
@@ -121,9 +114,10 @@ public:
 				floor_verts.emplace_back(glm::vec3(p1.x, sector.floor_height, p1.y), p1);
 				floor_verts.emplace_back(glm::vec3(p2.x, sector.floor_height, p2.y), p2);
 				floor_verts.emplace_back(glm::vec3(p3.x, sector.floor_height, p3.y), p3);
+
 				ceil_verts.emplace_back(glm::vec3(p1.x, sector.ceil_height, p1.y), p1);
-				ceil_verts.emplace_back(glm::vec3(p2.x, sector.ceil_height, p2.y), p2);
 				ceil_verts.emplace_back(glm::vec3(p3.x, sector.ceil_height, p3.y), p3);
+				ceil_verts.emplace_back(glm::vec3(p2.x, sector.ceil_height, p2.y), p2);
 			});
 		}
 
@@ -257,11 +251,11 @@ private:
 			u2 = p2.y;
 		}
 		wall_verts.emplace_back(glm::vec3(p1.x, h1, p1.y), glm::vec2(u1, h1));
+		wall_verts.emplace_back(glm::vec3(p2.x, h2, p2.y), glm::vec2(u2, h2));
 		wall_verts.emplace_back(glm::vec3(p1.x, h2, p1.y), glm::vec2(u1, h2));
-		wall_verts.emplace_back(glm::vec3(p2.x, h2, p2.y), glm::vec2(u2, h2));
 		wall_verts.emplace_back(glm::vec3(p1.x, h1, p1.y), glm::vec2(u1, h1));
-		wall_verts.emplace_back(glm::vec3(p2.x, h2, p2.y), glm::vec2(u2, h2));
 		wall_verts.emplace_back(glm::vec3(p2.x, h1, p2.y), glm::vec2(u2, h1));
+		wall_verts.emplace_back(glm::vec3(p2.x, h2, p2.y), glm::vec2(u2, h2));
 	}
 
 	std::vector<Vert> wall_verts;
@@ -284,7 +278,6 @@ private:
 int main(int argc, char** argv) {
 	rmw::context.init(800, 600, "portal");
 
-	map.load("map.txt");
 
 	renderer2D.init();
 	renderer3D.init();
