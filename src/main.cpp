@@ -27,17 +27,6 @@ Editor	editor;
 class MapRenderer {
 public:
 
-	struct Vert {
-		glm::vec3		pos;
-		glm::vec2		uv;
-
-		Vert(	const glm::vec3& pos,
-				const glm::vec2& uv)
-			: pos(pos), uv(uv)
-		{}
-	};
-
-
 	void init() {
 
 		shader = rmw::context.create_shader(
@@ -65,8 +54,8 @@ public:
 		vertex_buffer = rmw::context.create_vertex_buffer(rmw::BufferHint::StreamDraw);
 		vertex_array = rmw::context.create_vertex_array();
 		vertex_array->set_primitive_type(rmw::PrimitiveType::Triangles);
-		vertex_array->set_attribute(0, vertex_buffer, rmw::ComponentType::Float, 3, false, 0, sizeof(Vert));
-		vertex_array->set_attribute(1, vertex_buffer, rmw::ComponentType::Float, 2, false, 12, sizeof(Vert));
+		vertex_array->set_attribute(0, vertex_buffer, rmw::ComponentType::Float, 3, false, 0, sizeof(MapVertex));
+		vertex_array->set_attribute(1, vertex_buffer, rmw::ComponentType::Float, 2, false, 12, sizeof(MapVertex));
 
 		tex_wall  = rmw::context.create_texture_2D("media/wall.png");
 		tex_floor = rmw::context.create_texture_2D("media/floor.png");
@@ -80,45 +69,13 @@ public:
 		ceil_verts.clear();
 
 		for (int i = 0; i < (int) map.sectors.size(); ++i) {
-			Sector& sector = map.sectors[i];
+			const Sector& s = map.sectors[i];
 
-			// walls
-			for (int j = 0; j < (int) sector.walls.size(); ++j) {
-				auto& w1 = sector.walls[j];
-				auto& w2 = sector.walls[(j + 1) % sector.walls.size()];
-				auto& p1 = w1.pos;
-				auto& p2 = w2.pos;
-
-				float h = sector.ceil_height;
-				for (const WallRef& ref : w1.refs) {
-					const Sector& s = map.sectors[ref.sector_nr];
-					if (s.ceil_height < h) {
-						generate_wall(p1, h, p2, s.ceil_height);
-					}
-					h = s.floor_height;
-				}
-				if (h > sector.floor_height) {
-					generate_wall(p1, h, p2, sector.floor_height);
-				}
+			for (const MapFace& f : s.faces) {
+				if (f.tex_nr == 0) wall_verts.insert(wall_verts.end(), f.verts.begin(), f.verts.end());
+				if (f.tex_nr == 1) floor_verts.insert(floor_verts.end(), f.verts.begin(), f.verts.end());
+				if (f.tex_nr == 2) ceil_verts.insert(ceil_verts.end(), f.verts.begin(), f.verts.end());
 			}
-
-
-			// trangulate floor and ceiling
-			std::vector<glm::vec2> poly;
-			for (const Wall& w : sector.walls) poly.emplace_back(w.pos);
-			triangulate(poly, [this, &sector](
-				const glm::vec2& p1,
-				const glm::vec2& p2,
-				const glm::vec2& p3)
-			{
-				floor_verts.emplace_back(glm::vec3(p1.x, sector.floor_height, p1.y), p1);
-				floor_verts.emplace_back(glm::vec3(p2.x, sector.floor_height, p2.y), p2);
-				floor_verts.emplace_back(glm::vec3(p3.x, sector.floor_height, p3.y), p3);
-
-				ceil_verts.emplace_back(glm::vec3(p1.x, sector.ceil_height, p1.y), p1);
-				ceil_verts.emplace_back(glm::vec3(p3.x, sector.ceil_height, p3.y), p3);
-				ceil_verts.emplace_back(glm::vec3(p2.x, sector.ceil_height, p2.y), p2);
-			});
 		}
 
 
@@ -190,47 +147,6 @@ public:
 //			renderer3D.set_color(0, 0, 255);
 //			renderer3D.line(orig, orig + dir * 50.0f);
 
-			// wire frame
-			renderer3D.set_color(255, 0, 0);
-/*
-			for (int i = 0; i < (int) map.sectors.size(); ++i) {
-				Sector& sector = map.sectors[i];
-				for (int j = 0; j < (int) sector.walls.size(); ++j) {
-					auto& w1 = sector.walls[j];
-					auto& w2 = sector.walls[(j + 1) % sector.walls.size()];
-					auto& p1 = w1.pos;
-					auto& p2 = w2.pos;
-
-					float h = sector.ceil_height;
-					for (const WallRef& ref : w1.refs) {
-						const Sector& s = map.sectors[ref.sector_nr];
-						if (s.ceil_height < h) {
-							renderer3D.line(
-								glm::vec3(p1.x, h, p1.y),
-								glm::vec3(p2.x, h, p2.y));
-							renderer3D.line(
-								glm::vec3(p1.x, h, p1.y),
-								glm::vec3(p1.x, s.ceil_height, p1.y));
-							renderer3D.line(
-								glm::vec3(p1.x, s.ceil_height, p1.y),
-								glm::vec3(p2.x, s.ceil_height, p2.y));
-						}
-						h = s.floor_height;
-					}
-					if (h > sector.floor_height) {
-						renderer3D.line(
-							glm::vec3(p1.x, h, p1.y),
-							glm::vec3(p2.x, h, p2.y));
-						renderer3D.line(
-							glm::vec3(p1.x, h, p1.y),
-							glm::vec3(p1.x, sector.floor_height, p1.y));
-						renderer3D.line(
-							glm::vec3(p1.x, sector.floor_height, p1.y),
-							glm::vec3(p2.x, sector.floor_height, p2.y));
-					}
-				}
-			}
-*/
 			renderer3D.flush();
 		}
 
@@ -240,27 +156,9 @@ public:
 
 private:
 
-	void generate_wall(const glm::vec2& p1, float h1, const glm::vec2& p2, float h2) {
-		float u1, u2;
-		if (abs(p2.x - p1.x) > abs(p2.y - p1.y)) {
-			u1 = p1.x;
-			u2 = p2.x;
-		}
-		else {
-			u1 = p1.y;
-			u2 = p2.y;
-		}
-		wall_verts.emplace_back(glm::vec3(p1.x, h1, p1.y), glm::vec2(u1, h1));
-		wall_verts.emplace_back(glm::vec3(p2.x, h2, p2.y), glm::vec2(u2, h2));
-		wall_verts.emplace_back(glm::vec3(p1.x, h2, p1.y), glm::vec2(u1, h2));
-		wall_verts.emplace_back(glm::vec3(p1.x, h1, p1.y), glm::vec2(u1, h1));
-		wall_verts.emplace_back(glm::vec3(p2.x, h1, p2.y), glm::vec2(u2, h1));
-		wall_verts.emplace_back(glm::vec3(p2.x, h2, p2.y), glm::vec2(u2, h2));
-	}
-
-	std::vector<Vert> wall_verts;
-	std::vector<Vert> ceil_verts;
-	std::vector<Vert> floor_verts;
+	std::vector<MapVertex> wall_verts;
+	std::vector<MapVertex> ceil_verts;
+	std::vector<MapVertex> floor_verts;
 
 
 	rmw::Shader::Ptr		shader;

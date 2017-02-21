@@ -2,7 +2,6 @@
 #include "eye.h"
 #include "math.h"
 
-#include "atlas.h"
 
 #include <cstdio>
 #include <algorithm>
@@ -28,47 +27,104 @@ enum {
 	SHADOW_DETAIL = 4
 };
 
+
+
+void Map::setup_sector_faces(Sector& s) {
+
+	// walls
+
+	s.faces.clear();
+	auto generate_wall_face = [this, &s](const glm::vec2& p1, float y1, const glm::vec2& p2, float y2) {
+		float u1, u2;
+		if (abs(p2.x - p1.x) > abs(p2.y - p1.y)) {
+			u1 = p1.x;
+			u2 = p2.x;
+		}
+		else {
+			u1 = p1.y;
+			u2 = p2.y;
+		}
+
+		s.faces.emplace_back();
+		MapFace& face = s.faces.back();
+		face.tex_nr = 0;
+		face.verts.emplace_back(glm::vec3(p1.x, y1, p1.y), glm::vec2(u1, y1));
+		face.verts.emplace_back(glm::vec3(p2.x, y2, p2.y), glm::vec2(u2, y2));
+		face.verts.emplace_back(glm::vec3(p1.x, y2, p1.y), glm::vec2(u1, y2));
+		face.verts.emplace_back(glm::vec3(p1.x, y1, p1.y), glm::vec2(u1, y1));
+		face.verts.emplace_back(glm::vec3(p2.x, y1, p2.y), glm::vec2(u2, y1));
+		face.verts.emplace_back(glm::vec3(p2.x, y2, p2.y), glm::vec2(u2, y2));
+
+		int w = std::ceil(glm::distance(p1, p2) * SHADOW_DETAIL);
+		int h = std::ceil((y1 - y2) * SHADOW_DETAIL);
+		face.shadow = shadow_atlas.allocate_region(w, h);
+	};
+	for (int j = 0; j < (int) s.walls.size(); ++j) {
+		auto& w = s.walls[j];
+		auto& p1 = w.pos;
+		auto& p2 = s.walls[(j + 1) % s.walls.size()].pos;
+
+		float h = s.ceil_height;
+		for (const WallRef& ref : w.refs) {
+			const Sector& s2 = map.sectors[ref.sector_nr];
+			if (s2.ceil_height < h) {
+				generate_wall_face(p1, h, p2, s2.ceil_height);
+			}
+			h = s2.floor_height;
+		}
+		if (h > s.floor_height) {
+			generate_wall_face(p1, h, p2, s.floor_height);
+		}
+	}
+
+
+	// floor and ceiling
+	std::vector<glm::vec2> poly;
+	glm::vec2 max;
+	glm::vec2 min;
+	for (int j = 0; j < (int) s.walls.size(); ++j) {
+		const Wall& w = s.walls[j];
+		poly.emplace_back(w.pos);
+		if (j == 0) max = min = w.pos;
+		else {
+			max.x = std::max(max.x, w.pos.x);
+			max.y = std::max(max.y, w.pos.y);
+			min.x = std::min(min.x, w.pos.x);
+			min.y = std::min(min.y, w.pos.y);
+		}
+	}
+	glm::ivec2 size = glm::ceil((max - min) * (float) SHADOW_DETAIL);
+
+	s.faces.resize(s.faces.size() + 2);
+	MapFace& floor_face = s.faces[s.faces.size() - 2];
+	MapFace& ceil_face = s.faces[s.faces.size() - 1];
+
+	floor_face.shadow = shadow_atlas.allocate_region(size.x, size.y);
+	floor_face.tex_nr = 1;
+
+	ceil_face.shadow = shadow_atlas.allocate_region(size.x, size.y);
+	ceil_face.tex_nr = 2;
+
+	triangulate(poly, [&s, &floor_face, &ceil_face](const glm::vec2& p1, const glm::vec2& p2, const glm::vec2& p3)
+	{
+		floor_face.verts.emplace_back(glm::vec3(p1.x, s.floor_height, p1.y), p1);
+		floor_face.verts.emplace_back(glm::vec3(p2.x, s.floor_height, p2.y), p2);
+		floor_face.verts.emplace_back(glm::vec3(p3.x, s.floor_height, p3.y), p3);
+
+		ceil_face.verts.emplace_back(glm::vec3(p1.x, s.ceil_height, p1.y), p1);
+		ceil_face.verts.emplace_back(glm::vec3(p3.x, s.ceil_height, p3.y), p3);
+		ceil_face.verts.emplace_back(glm::vec3(p2.x, s.ceil_height, p2.y), p2);
+	});
+
+}
+
+
 Map::Map() {
 	load("map.txt");
 
-
-	// shadow mapping
-	Atlas atlas;
-	for (const Sector& s : sectors) {
-		glm::vec2 max;
-		glm::vec2 min;
-		int h = (s.ceil_height - s.floor_height) * SHADOW_DETAIL;
-		for (int j = 0; j < (int) s.walls.size(); ++j) {
-
-			bool needs_shadow = true;
-			const Wall& w1 = s.walls[j];
-			if (w1.refs.size() == 1) {
-				const Sector& s2 = sectors[w1.refs[0].sector_nr];
-				if (s2.floor_height <= s.floor_height && s2.ceil_height >= s.ceil_height) {
-					needs_shadow = false;
-				}
-			}
-
-			if (needs_shadow) {
-				const Wall& w2 = s.walls[(j + 1) % s.walls.size()];
-				int w = std::ceil(glm::distance(w1.pos, w2.pos) * SHADOW_DETAIL);
-				atlas.allocate_region(w, h);
-			}
-
-			if (j == 0) max = min = w1.pos;
-			else {
-				max.x = std::max(max.x, w1.pos.x);
-				max.y = std::max(max.y, w1.pos.y);
-				min.x = std::min(min.x, w1.pos.x);
-				min.y = std::min(min.y, w1.pos.y);
-			}
-		}
-		glm::vec2 b = glm::ceil((max - min) * (float) SHADOW_DETAIL);
-		atlas.allocate_region(b.x, b.y);
-		atlas.allocate_region(b.x, b.y);
-	}
-	atlas.save();
-
+	shadow_atlas.init();
+	for (Sector& s : sectors) setup_sector_faces(s);
+	shadow_atlas.save();
 }
 
 
@@ -177,8 +233,8 @@ int Map::pick_sector(const glm::vec2& p) const {
 
 
 void Map::clip_move(Location& loc, const glm::vec3& mov) const {
-//	loc.pos += mov;
 
+	// TODO: have this be input
 	float radius = 1.6;
 	float floor_dist = 5;
 	float ceil_dist = 1;

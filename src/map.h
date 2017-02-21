@@ -3,6 +3,26 @@
 #include <vector>
 #include <glm/glm.hpp>
 
+#include "atlas.h"
+
+
+struct MapVertex {
+	glm::vec3		pos;
+	glm::vec2		uv;
+	glm::vec2		uv2;
+	MapVertex(const glm::vec3& pos, const glm::vec2& uv, const glm::vec2& uv2=glm::vec2(0, 0))
+		: pos(pos), uv(uv), uv2(uv2)
+	{}
+};
+
+
+struct MapFace {
+	glm::mat4				mat;
+	int						tex_nr;
+	AtlasRegion				shadow;
+	std::vector<MapVertex>	verts;
+};
+
 
 struct Location {
 	glm::vec3	pos;
@@ -30,36 +50,26 @@ struct Wall {
 
 
 struct Sector {
-	std::vector<Wall> walls;
-	float floor_height;
-	float ceil_height;
-};
-
-
-struct MapVertex {
-	glm::vec3		pos;
-	glm::vec2		uv;
-	glm::vec2		uv2;
-	MapVertex(const glm::vec3& pos, const glm::vec2& uv, const glm::vec2& uv2)
-		: pos(pos), uv(uv), uv2(uv2)
-	{}
+	std::vector<Wall>		walls;
+	float					floor_height;
+	float					ceil_height;
+	std::vector<MapFace>	faces;
 };
 
 
 class Map {
 public:
 	Map();
-	int pick_sector(const glm::vec2& p) const;
-	void clip_move(Location& loc, const glm::vec3& mov) const;
-	void setup_portals();
-	bool load(const char* name);
-	bool save(const char* name) const;
-	float ray_intersect(const Location& loc, const glm::vec3& dir,
-						WallRef& ref, glm::vec3& normal,
-						float max_factor=std::numeric_limits<float>::infinity()) const;
+	int		pick_sector(const glm::vec2& p) const;
+	void	clip_move(Location& loc, const glm::vec3& mov) const;
+	void	setup_portals();
+	bool	load(const char* name);
+	bool	save(const char* name) const;
+	float	ray_intersect(	const Location& loc, const glm::vec3& dir,
+							WallRef& ref, glm::vec3& normal,
+							float max_factor=std::numeric_limits<float>::infinity()) const;
 
 
-//private:
 	std::vector<Sector>	sectors = {
 		{	{
 				{{ -10,	10	}},
@@ -70,6 +80,9 @@ public:
 			0, 10
 		},
 	};
+private:
+	void	setup_sector_faces(Sector& s);
+	Atlas	shadow_atlas;
 
 };
 

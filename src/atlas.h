@@ -17,15 +17,14 @@ struct AtlasRegion {
 
 class Atlas {
 public:
-
+	enum { SURFACE_SIZE = 2048 };
 
 	~Atlas();
-
-	AtlasRegion allocate_region(int w, int h);
-	void save();
+	void			init();
+	AtlasRegion		allocate_region(int w, int h);
+	void			save();
 
 private:
-	enum { SURFACE_SIZE = 2048 };
 
 	std::vector<SDL_Surface*>			m_surfaces;
 	std::array<int, SURFACE_SIZE>		m_columns;

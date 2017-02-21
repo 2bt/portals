@@ -9,10 +9,15 @@ Atlas::~Atlas() {
 }
 
 
+void Atlas::init() {
+	for (SDL_Surface* s : m_surfaces) SDL_FreeSurface(s);
+	m_surfaces.clear();
+}
+
+
 void Atlas::add_surface() {
 	SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, SURFACE_SIZE, SURFACE_SIZE, 32, SDL_PIXELFORMAT_RGBA32);
 	m_surfaces.push_back(s);
-
 	for (int& i : m_columns) i = 0;
 }
 
