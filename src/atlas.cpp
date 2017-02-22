@@ -1,5 +1,6 @@
 #include "atlas.h"
 #include <assert.h>
+#include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <glm/glm.hpp>
 
@@ -16,7 +17,7 @@ void Atlas::init() {
 
 
 void Atlas::add_surface() {
-	SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, SURFACE_SIZE, SURFACE_SIZE, 32, SDL_PIXELFORMAT_RGBA32);
+	SDL_Surface* s = SDL_CreateRGBSurface(0, SURFACE_SIZE, SURFACE_SIZE, 24, 0, 0, 0, 0);
 	m_surfaces.push_back(s);
 	for (int& i : m_columns) i = 0;
 }
@@ -59,15 +60,14 @@ AtlasRegion Atlas::allocate_region(int w, int h) {
 
 
 	// fill region with random color
-	glm::u8vec4 color;
+	glm::u8vec3 color;
 	color.r = rand() % 256;
 	color.g = rand() % 256;
 	color.b = rand() % 256;
-	color.a = 255;
 	SDL_Surface* s = m_surfaces.back();
 	for (int x = r.x; x < r.x + r.w; ++x) {
 		for (int y = r.y; y < r.y + r.h; ++y) {
-			glm::u8vec4 * p = (glm::u8vec4 *) ((uint8_t * ) s->pixels + y * s->pitch + x * sizeof(glm::u8vec4));
+			glm::u8vec3 * p = (glm::u8vec3 *) ((uint8_t * ) s->pixels + y * s->pitch + x * sizeof(glm::u8vec3));
 			*p = color;
 		}
 	}
