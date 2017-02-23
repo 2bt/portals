@@ -132,6 +132,12 @@ public:
 			}
 
 
+//			auto& f = map.sectors[25].faces[1];
+//			for (int y = f.shadow.y; y < f.shadow.y + f.shadow.h; ++y) {
+//				for (int x = f.shadow.x; x < f.shadow.x + f.shadow.w; ++x) {
+//					renderer3D.point(glm::vec3(f.mat * glm::vec4(x, y, 1, 1)));
+//				}
+//			}
 
 			renderer3D.set_color(0, 255, 0);
 			renderer3D.point(mark);
