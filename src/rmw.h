@@ -181,7 +181,7 @@ class Texture2D {
 	friend class Shader;
 public:
 	typedef std::unique_ptr<Texture2D> Ptr;
-
+	~Texture2D();
 
 
 	// sampler stuff

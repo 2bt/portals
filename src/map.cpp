@@ -64,6 +64,7 @@ void Map::setup_sector_faces(Sector& s) {
 				y1 + face.shadow.y / (float) SHADOW_DETAIL,
 				p1.y - face.shadow.x * pp.y,
 				1);
+		face.inv_mat = glm::inverse(face.mat);
 
 
 		glm::vec3 v[4] = {
@@ -72,10 +73,9 @@ void Map::setup_sector_faces(Sector& s) {
 			glm::vec3(p2.x, y1, p2.y),
 			glm::vec3(p2.x, y2, p2.y),
 		};
-		glm::mat4 inv_mat = glm::inverse(face.mat);
 		glm::vec2 q[4];
 		for (int i = 0; i < 4; ++i) {
-			glm::vec2 t = glm::vec2(inv_mat * glm::vec4(v[i], 1));
+			glm::vec2 t = glm::vec2(face.inv_mat * glm::vec4(v[i], 1));
 			q[i] = (t + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
 		}
 
@@ -150,17 +150,17 @@ void Map::setup_sector_faces(Sector& s) {
 			min.y - ceil_face.shadow.y / (float) SHADOW_DETAIL,
 			1);
 
-	glm::mat4 floor_inv_mat = glm::inverse(floor_face.mat);
-	glm::mat4 ceil_inv_mat = glm::inverse(floor_face.mat);
+	floor_face.inv_mat = glm::inverse(floor_face.mat);
+	ceil_face.inv_mat = glm::inverse(ceil_face.mat);
 
 	// this code is not very elegant. i'm not proud
-	triangulate(poly, [&s, &floor_face, &ceil_face, &floor_inv_mat, &ceil_inv_mat]
+	triangulate(poly, [&s, &floor_face, &ceil_face]
 	(const glm::vec2& p1, const glm::vec2& p2, const glm::vec2& p3)
 	{
 		{
-			glm::vec2 t1 = glm::vec2(floor_inv_mat * glm::vec4(p1.x, 0, p1.y, 1));
-			glm::vec2 t2 = glm::vec2(floor_inv_mat * glm::vec4(p2.x, 0, p2.y, 1));
-			glm::vec2 t3 = glm::vec2(floor_inv_mat * glm::vec4(p3.x, 0, p3.y, 1));
+			glm::vec2 t1 = glm::vec2(floor_face.inv_mat * glm::vec4(p1.x, 0, p1.y, 1));
+			glm::vec2 t2 = glm::vec2(floor_face.inv_mat * glm::vec4(p2.x, 0, p2.y, 1));
+			glm::vec2 t3 = glm::vec2(floor_face.inv_mat * glm::vec4(p3.x, 0, p3.y, 1));
 			glm::vec2 q1 = (t1 + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
 			glm::vec2 q2 = (t2 + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
 			glm::vec2 q3 = (t3 + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
@@ -170,9 +170,9 @@ void Map::setup_sector_faces(Sector& s) {
 		}
 
 		{
-			glm::vec2 t1 = glm::vec2(ceil_inv_mat * glm::vec4(p1.x, 0, p1.y, 1));
-			glm::vec2 t2 = glm::vec2(ceil_inv_mat * glm::vec4(p2.x, 0, p2.y, 1));
-			glm::vec2 t3 = glm::vec2(ceil_inv_mat * glm::vec4(p3.x, 0, p3.y, 1));
+			glm::vec2 t1 = glm::vec2(ceil_face.inv_mat * glm::vec4(p1.x, 0, p1.y, 1));
+			glm::vec2 t2 = glm::vec2(ceil_face.inv_mat * glm::vec4(p2.x, 0, p2.y, 1));
+			glm::vec2 t3 = glm::vec2(ceil_face.inv_mat * glm::vec4(p3.x, 0, p3.y, 1));
 			glm::vec2 q1 = (t1 + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
 			glm::vec2 q2 = (t2 + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
 			glm::vec2 q3 = (t3 + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;

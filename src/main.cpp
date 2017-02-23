@@ -129,6 +129,16 @@ public:
 				WallRef ref;
 				float f = map.ray_intersect(eye.get_location(), dir, ref, mark_normal);
 				mark = eye.get_location().pos + dir * f;
+
+				if (ref.wall_nr == -2) {
+					auto& fs = map.sectors[ref.sector_nr].faces;
+					auto& f = fs[fs.size() - 2];
+					auto t = glm::ivec2(glm::floor(glm::vec2(f.inv_mat * glm::vec4(mark, 1)) + glm::vec2(0.5)));
+					auto s = map.shadow_atlas.m_surfaces[0];
+					auto p = (glm::u8vec3 *) ((uint8_t * ) s->pixels + t.y * s->pitch + t.x * sizeof(glm::u8vec3));
+					p->r = 255;
+					shadow_map = rmw::context.create_texture_2D(s);
+				}
 			}
 
 

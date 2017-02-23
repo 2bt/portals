@@ -18,6 +18,7 @@ struct MapVertex {
 
 struct MapFace {
 	glm::mat4				mat;
+	glm::mat4				inv_mat;
 	int						tex_nr;
 	AtlasRegion				shadow;
 	std::vector<MapVertex>	verts;

@@ -199,8 +199,6 @@ bool Shader::init(const char* vs, const char* fs) {
 
 	return true;
 }
-
-
 Shader::~Shader() {
 	glDeleteProgram(m_program);
 }
@@ -221,6 +219,14 @@ void Shader::UniformExtend<T>::update() const {
 	gl_uniform(location, value);
 }
 
+/*
+	// TODO:
+	// cache bound textures to minimize calls to glBindTexture()
+	// cache this variable in Context
+	int max_texture_units;
+	glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_texture_units);
+	std::vector<GLuint> bound_textures(max_texture_units);
+*/
 void Shader::UniformTexture2D::update() const {
 	// NOTE: this is hacky
 	// but what's the best way to do this?
@@ -232,14 +238,6 @@ void Shader::UniformTexture2D::update() const {
 }
 
 
-/*
-	// TODO:
-	// cache bound textures to minimize calls to glBindTexture()
-	// cache this variable in Context
-	int max_texture_units;
-	glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_texture_units);
-	std::vector<GLuint> bound_textures(max_texture_units);
-*/
 Texture2D::Texture2D(SDL_Surface* img) {
 
 	glGenTextures(1, &m_handle);
@@ -259,8 +257,9 @@ Texture2D::Texture2D(SDL_Surface* img) {
 	glTexImage2D(GL_TEXTURE_2D, 0, format, img->w, img->h, 0, format, GL_UNSIGNED_BYTE, img->pixels);
 
 	glGenerateMipmap(GL_TEXTURE_2D);
-
-//	glBindTexture(GL_TEXTURE_2D, 0);
+}
+Texture2D::~Texture2D() {
+	glDeleteTextures(1, &m_handle);
 }
 
 
