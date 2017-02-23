@@ -15,10 +15,15 @@ void Atlas::init() {
 	m_surfaces.clear();
 }
 
+bool Atlas::load_surface(const char* name) {
+	SDL_Surface* s = IMG_Load(name);
+	if (!s) return false;
+	m_surfaces.push_back(s);
+	return true;
+}
 
 void Atlas::add_surface() {
 	SDL_Surface* s = SDL_CreateRGBSurface(0, SURFACE_SIZE, SURFACE_SIZE, 24, 0, 0, 0, 0);
-//	SDL_Surface* s = IMG_Load("sm.png");
 	m_surfaces.push_back(s);
 	for (int& i : m_columns) i = 0;
 }
@@ -60,6 +65,7 @@ AtlasRegion Atlas::allocate_region(int w, int h) {
 	r.h = h;
 
 
+/*
 	// fill region with random color
 	glm::u8vec3 color;
 	color.r = rand() % 256;
@@ -79,7 +85,7 @@ AtlasRegion Atlas::allocate_region(int w, int h) {
 		p = (glm::u8vec3 *) ((uint8_t * ) s->pixels + y * s->pitch + (r.x + r.w - 1) * sizeof(glm::u8vec3));
 		*p = color;
 	}
-
+*/
 
 	return r;
 }

@@ -52,7 +52,7 @@ public:
 				uniform sampler2D shadow;
 				out vec4 out_color;
 				void main() {
-					vec4 c = texture(tex, ex_uv) * 0.5 + texture(shadow, ex_uv2) * 0.5;
+					vec4 c = texture(tex, ex_uv) * texture(shadow, ex_uv2);
 					out_color = vec4(c.rgb * pow(0.99, ex_depth), c.a);
 				})");
 
@@ -153,11 +153,6 @@ public:
 			renderer3D.point(mark);
 			renderer3D.set_color(0, 100, 0);
 			renderer3D.line(mark, mark + mark_normal * 3.0f);
-
-//			renderer3D.set_color(255, 0, 255);
-//			renderer3D.point(orig);
-//			renderer3D.set_color(0, 0, 255);
-//			renderer3D.line(orig, orig + dir * 50.0f);
 
 			renderer3D.flush();
 		}

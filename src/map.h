@@ -84,6 +84,7 @@ public:
 	};
 
 	void	setup_sector_faces(Sector& s);
+	void	bake();
 	Atlas	shadow_atlas;
 
 };

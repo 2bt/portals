@@ -28,6 +28,7 @@ public:
 
 		m_rs.line_width = 1;
 		m_rs.depth_test_enabled = true;
+		m_rs.depth_test_enabled = false;
 
 		m_rs.blend_enabled = true;
 		m_rs.blend_func_src_rgb		= rmw::BlendFunc::SrcAlpha;

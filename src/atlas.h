@@ -17,11 +17,12 @@ struct AtlasRegion {
 
 class Atlas {
 public:
-	enum { SURFACE_SIZE = 2048 };
+	enum { SURFACE_SIZE = 1024 };
 
 	~Atlas();
 	void			init();
 	AtlasRegion		allocate_region(int w, int h);
+	bool			load_surface(const char* name);
 	void			save();
 
 //private:
