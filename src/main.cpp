@@ -53,7 +53,7 @@ public:
 				out vec4 out_color;
 				void main() {
 					vec4 c = texture(tex, ex_uv) * 0.5 + texture(shadow, ex_uv2) * 0.5;
-					out_color = vec4(c.rgb * pow(0.98, ex_depth), c.a);
+					out_color = vec4(c.rgb * pow(0.99, ex_depth), c.a);
 				})");
 
 		vertex_buffer = rmw::context.create_vertex_buffer(rmw::BufferHint::StreamDraw);
