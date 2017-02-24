@@ -17,7 +17,7 @@ struct AtlasRegion {
 
 class Atlas {
 public:
-	enum { SURFACE_SIZE = 1024 };
+	enum { SURFACE_SIZE = 256 };
 
 	~Atlas();
 	void			init();

@@ -109,7 +109,7 @@ public:
 			// XXX:
 			renderer3D.set_transformation(mat_perspective * mat_view);
 			renderer3D.set_line_width(3);
-			renderer3D.set_point_size(10);
+			renderer3D.set_point_size(5);
 
 
 			static glm::vec3 orig;
@@ -142,12 +142,12 @@ public:
 			}
 
 
-//			auto& f = map.sectors[25].faces[1];
-//			for (int y = f.shadow.y; y < f.shadow.y + f.shadow.h; ++y) {
-//				for (int x = f.shadow.x; x < f.shadow.x + f.shadow.w; ++x) {
-//					renderer3D.point(glm::vec3(f.mat * glm::vec4(x, y, 1, 1)));
-//				}
-//			}
+			for (auto& f : map.sectors[25].faces)
+			for (int y = f.shadow.y; y < f.shadow.y + f.shadow.h; ++y) {
+				for (int x = f.shadow.x; x < f.shadow.x + f.shadow.w; ++x) {
+					renderer3D.point(glm::vec3(f.mat * glm::vec4(x, y, 0.01, 1)));
+				}
+			}
 
 			renderer3D.set_color(0, 255, 0);
 			renderer3D.point(mark);

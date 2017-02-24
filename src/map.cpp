@@ -26,8 +26,6 @@ namespace std {
 Map::Map() {
 	load("map.txt");
 
-
-
 //	shadow_atlas.load_surface("sm.png");
 	for (Sector& s : sectors) setup_sector_faces(s);
 	bake();
@@ -88,7 +86,6 @@ void Map::bake() {
 }
 
 
-//#define SHADOW_DETAIL 1.0f
 #define SHADOW_DETAIL 0.25f
 
 
@@ -184,39 +181,36 @@ void Map::setup_sector_faces(Sector& s) {
 			min.y = std::min(min.y, w.pos.y);
 		}
 	}
-	glm::ivec2 size = glm::ceil((max - min) * SHADOW_DETAIL) + glm::vec2(1);
-
+	min = glm::floor(min * SHADOW_DETAIL);
+	max = glm::ceil(max * SHADOW_DETAIL);
+	glm::ivec2 size = max - min + glm::vec2(1);
 	s.faces.resize(s.faces.size() + 2);
 	MapFace& floor_face = s.faces[s.faces.size() - 2];
 	MapFace& ceil_face = s.faces[s.faces.size() - 1];
-
 	floor_face.tex_nr = 1;
 	ceil_face.tex_nr = 2;
 	floor_face.shadow = shadow_atlas.allocate_region(size.x, size.y);
 	ceil_face.shadow = shadow_atlas.allocate_region(size.x, size.y);
 
-	floor_face.mat[0] = glm::vec4(1.0f / SHADOW_DETAIL, 0, 0, 0);
-	floor_face.mat[1] = glm::vec4(0, 0, 1.0f / SHADOW_DETAIL, 0);
-	floor_face.mat[2] = glm::vec4(0, 1.0f / SHADOW_DETAIL, 0, 0);
-	floor_face.mat[3] = glm::vec4(
-			min.x - floor_face.shadow.x / SHADOW_DETAIL,
-			s.floor_height,
-			min.y - floor_face.shadow.y / SHADOW_DETAIL,
-			1);
+	floor_face.mat = {
+		1.0f / SHADOW_DETAIL, 0, 0, 0,
+		0, 0, 1.0f / SHADOW_DETAIL, 0,
+		0, 1.0f / SHADOW_DETAIL, 0, 0,
+		(min.x - floor_face.shadow.x) / SHADOW_DETAIL, s.floor_height,
+		(min.y - floor_face.shadow.y) / SHADOW_DETAIL, 1
+	};
 
-	ceil_face.mat[0] = glm::vec4(1.0f / SHADOW_DETAIL, 0, 0, 0);
-	ceil_face.mat[1] = glm::vec4(0, 0, 1.0f / SHADOW_DETAIL, 0);
-	ceil_face.mat[2] = glm::vec4(0, -1.0f / SHADOW_DETAIL, 0, 0);
-	ceil_face.mat[3] = glm::vec4(
-			min.x - ceil_face.shadow.x / SHADOW_DETAIL,
-			s.ceil_height,
-			min.y - ceil_face.shadow.y / SHADOW_DETAIL,
-			1);
+	ceil_face.mat = {
+		1.0f / SHADOW_DETAIL, 0, 0, 0,
+		0, 0, 1.0f / SHADOW_DETAIL, 0,
+		0, -1.0f / SHADOW_DETAIL, 0, 0,
+		(min.x - ceil_face.shadow.x) / SHADOW_DETAIL, s.ceil_height,
+		(min.y - ceil_face.shadow.y) / SHADOW_DETAIL, 1
+	};
 
 	floor_face.inv_mat = glm::inverse(floor_face.mat);
 	ceil_face.inv_mat = glm::inverse(ceil_face.mat);
 
-	// this code is not very elegant. i'm not proud
 	triangulate(poly, [&s, &floor_face, &ceil_face]
 	(const glm::vec2& p1, const glm::vec2& p2, const glm::vec2& p3)
 	{
