@@ -28,7 +28,7 @@ Map::Map() {
 
 //	shadow_atlas.load_surface("sm.png");
 	for (Sector& s : sectors) setup_sector_faces(s);
-	bake();
+//	bake();
 	shadow_atlas.save();
 }
 
@@ -96,7 +96,8 @@ void Map::setup_sector_faces(Sector& s) {
 	s.faces.clear();
 	auto generate_wall_face = [this, &s](const glm::vec2& p1, float y1, const glm::vec2& p2, float y2) {
 		float u1, u2;
-		if (abs(p2.x - p1.x) > abs(p2.y - p1.y)) {
+		glm::vec2 pp = glm::normalize(p2 - p1);
+		if (abs(pp.x) > abs(pp.y)) {
 			u1 = p1.x;
 			u2 = p2.x;
 		}
@@ -107,44 +108,21 @@ void Map::setup_sector_faces(Sector& s) {
 
 		s.faces.emplace_back();
 		MapFace& face = s.faces.back();
-
 		face.tex_nr = 0;
-		glm::vec2 pp = p2 - p1;
-		float len = glm::length(pp);
-		int w = std::ceil(len * SHADOW_DETAIL) + 1;
-		int h = std::ceil((y1 - y2) * SHADOW_DETAIL) + 1;
-		face.shadow = shadow_atlas.allocate_region(w, h);
+		face.normal = glm::vec3(pp.y, 0, -pp.x);
 
-		pp /= len * SHADOW_DETAIL;
-		face.mat[0] = glm::vec4(pp.x, 0, pp.y, 0);
-		face.mat[1] = glm::vec4(0, -1.0f / SHADOW_DETAIL, 0, 0);
-		face.mat[2] = glm::vec4(pp.y, 0, -pp.x, 0);
-		face.mat[3] = glm::vec4(
-				p1.x - face.shadow.x * pp.x,
-				y1 + face.shadow.y / SHADOW_DETAIL,
-				p1.y - face.shadow.x * pp.y,
-				1);
-		face.inv_mat = glm::inverse(face.mat);
-
-
-		glm::vec3 v[4] = {
+		glm::vec3 d[4] = {
 			glm::vec3(p1.x, y1, p1.y),
 			glm::vec3(p1.x, y2, p1.y),
 			glm::vec3(p2.x, y1, p2.y),
 			glm::vec3(p2.x, y2, p2.y),
 		};
-		glm::vec2 q[4];
-		for (int i = 0; i < 4; ++i) {
-			glm::vec2 t = glm::vec2(face.inv_mat * glm::vec4(v[i], 1));
-			q[i] = (t + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
-		}
-
-		face.verts.emplace_back(v[0], glm::vec2(u1, y1), q[0]);
-		face.verts.emplace_back(v[3], glm::vec2(u2, y2), q[3]);
-		face.verts.emplace_back(v[1], glm::vec2(u1, y2), q[1]);
-		face.verts.emplace_back(v[0], glm::vec2(u1, y1), q[0]);
-		face.verts.emplace_back(v[2], glm::vec2(u2, y1), q[2]);
-		face.verts.emplace_back(v[3], glm::vec2(u2, y2), q[3]);
+		face.verts.emplace_back(d[0], glm::vec2(u1, y1));
+		face.verts.emplace_back(d[3], glm::vec2(u2, y2));
+		face.verts.emplace_back(d[1], glm::vec2(u1, y2));
+		face.verts.emplace_back(d[0], glm::vec2(u1, y1));
+		face.verts.emplace_back(d[2], glm::vec2(u2, y1));
+		face.verts.emplace_back(d[3], glm::vec2(u2, y2));
 
 	};
 	for (int j = 0; j < (int) s.walls.size(); ++j) {
@@ -168,77 +146,98 @@ void Map::setup_sector_faces(Sector& s) {
 
 	// floor and ceiling
 	std::vector<glm::vec2> poly;
-	glm::vec2 max;
-	glm::vec2 min;
 	for (int j = 0; j < (int) s.walls.size(); ++j) {
-		const Wall& w = s.walls[j];
-		poly.emplace_back(w.pos);
-		if (j == 0) max = min = w.pos;
-		else {
-			max.x = std::max(max.x, w.pos.x);
-			max.y = std::max(max.y, w.pos.y);
-			min.x = std::min(min.x, w.pos.x);
-			min.y = std::min(min.y, w.pos.y);
-		}
+		const glm::vec2& p = s.walls[j].pos;
+		poly.emplace_back(p);
 	}
-	min = glm::floor(min * SHADOW_DETAIL);
-	max = glm::ceil(max * SHADOW_DETAIL);
-	glm::ivec2 size = max - min + glm::vec2(1);
+
 	s.faces.resize(s.faces.size() + 2);
 	MapFace& floor_face = s.faces[s.faces.size() - 2];
 	MapFace& ceil_face = s.faces[s.faces.size() - 1];
+
 	floor_face.tex_nr = 1;
+	floor_face.normal = glm::vec3(0, 1, 0);
+
 	ceil_face.tex_nr = 2;
-	floor_face.shadow = shadow_atlas.allocate_region(size.x, size.y);
-	ceil_face.shadow = shadow_atlas.allocate_region(size.x, size.y);
-
-	floor_face.mat = {
-		1.0f / SHADOW_DETAIL, 0, 0, 0,
-		0, 0, 1.0f / SHADOW_DETAIL, 0,
-		0, 1.0f / SHADOW_DETAIL, 0, 0,
-		(min.x - floor_face.shadow.x) / SHADOW_DETAIL, s.floor_height,
-		(min.y - floor_face.shadow.y) / SHADOW_DETAIL, 1
-	};
-
-	ceil_face.mat = {
-		1.0f / SHADOW_DETAIL, 0, 0, 0,
-		0, 0, 1.0f / SHADOW_DETAIL, 0,
-		0, -1.0f / SHADOW_DETAIL, 0, 0,
-		(min.x - ceil_face.shadow.x) / SHADOW_DETAIL, s.ceil_height,
-		(min.y - ceil_face.shadow.y) / SHADOW_DETAIL, 1
-	};
-
-	floor_face.inv_mat = glm::inverse(floor_face.mat);
-	ceil_face.inv_mat = glm::inverse(ceil_face.mat);
+	ceil_face.normal = glm::vec3(0, -1, 0);
 
 	triangulate(poly, [&s, &floor_face, &ceil_face]
 	(const glm::vec2& p1, const glm::vec2& p2, const glm::vec2& p3)
 	{
-		{
-			glm::vec2 t1 = glm::vec2(floor_face.inv_mat * glm::vec4(p1.x, 0, p1.y, 1));
-			glm::vec2 t2 = glm::vec2(floor_face.inv_mat * glm::vec4(p2.x, 0, p2.y, 1));
-			glm::vec2 t3 = glm::vec2(floor_face.inv_mat * glm::vec4(p3.x, 0, p3.y, 1));
-			glm::vec2 q1 = (t1 + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
-			glm::vec2 q2 = (t2 + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
-			glm::vec2 q3 = (t3 + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
-			floor_face.verts.emplace_back(glm::vec3(p1.x, s.floor_height, p1.y), p1, q1);
-			floor_face.verts.emplace_back(glm::vec3(p2.x, s.floor_height, p2.y), p2, q2);
-			floor_face.verts.emplace_back(glm::vec3(p3.x, s.floor_height, p3.y), p3, q3);
-		}
-
-		{
-			glm::vec2 t1 = glm::vec2(ceil_face.inv_mat * glm::vec4(p1.x, 0, p1.y, 1));
-			glm::vec2 t2 = glm::vec2(ceil_face.inv_mat * glm::vec4(p2.x, 0, p2.y, 1));
-			glm::vec2 t3 = glm::vec2(ceil_face.inv_mat * glm::vec4(p3.x, 0, p3.y, 1));
-			glm::vec2 q1 = (t1 + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
-			glm::vec2 q2 = (t2 + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
-			glm::vec2 q3 = (t3 + glm::vec2(0.5)) / (float) Atlas::SURFACE_SIZE;
-			ceil_face.verts.emplace_back(glm::vec3(p1.x, s.ceil_height, p1.y), p1, q1);
-			ceil_face.verts.emplace_back(glm::vec3(p3.x, s.ceil_height, p3.y), p3, q3);
-			ceil_face.verts.emplace_back(glm::vec3(p2.x, s.ceil_height, p2.y), p2, q2);
-		}
-
+		floor_face.verts.emplace_back(glm::vec3(p1.x, s.floor_height, p1.y), p1);
+		floor_face.verts.emplace_back(glm::vec3(p2.x, s.floor_height, p2.y), p2);
+		floor_face.verts.emplace_back(glm::vec3(p3.x, s.floor_height, p3.y), p3);
+		ceil_face.verts.emplace_back(glm::vec3(p1.x, s.ceil_height, p1.y), p1);
+		ceil_face.verts.emplace_back(glm::vec3(p3.x, s.ceil_height, p3.y), p3);
+		ceil_face.verts.emplace_back(glm::vec3(p2.x, s.ceil_height, p2.y), p2);
 	});
+
+
+	// set shadow texture coordinates
+	for (MapFace& f : s.faces) {
+		glm::vec3 min = f.verts.front().pos;
+		glm::vec3 max = f.verts.front().pos;
+		for (const MapVertex& v : f.verts) {
+			min = glm::min(min, v.pos);
+			max = glm::max(max, v.pos);
+		}
+		auto mmin = min;
+		auto mmax = max;
+		min = glm::floor(min * SHADOW_DETAIL);
+		max = glm::ceil(max * SHADOW_DETAIL);
+		glm::ivec3 size = max - min + glm::vec3(1);
+
+
+		auto n = f.normal / SHADOW_DETAIL;
+		auto abs = glm::abs(n);
+
+		if (abs.x > abs.y && abs.x > abs.z) {
+			f.shadow = shadow_atlas.allocate_region(size.y, size.z);
+			f.mat[0] = glm::vec4(0, 1 / SHADOW_DETAIL, 0, 0);
+			f.mat[1] = glm::vec4(n.x == abs.x ? -n.z : n.z, 0, 1 / SHADOW_DETAIL, 0);
+			f.mat[2] = glm::vec4(0, 0, 0, 0);
+			f.mat[3] = glm::vec4(n.x == abs.x ? mmax.x : mmin.x, min.y / SHADOW_DETAIL, min.z / SHADOW_DETAIL, 1);
+		}
+		else if (abs.y > abs.x && abs.y > abs.z) {
+			f.shadow = shadow_atlas.allocate_region(size.x, size.z);
+			f.mat[0] = glm::vec4(1 / SHADOW_DETAIL, 0, 0, 0);
+			f.mat[1] = glm::vec4(0, 0, 1 / SHADOW_DETAIL, 0);
+			f.mat[2] = glm::vec4(0, 0, 0, 0);
+			f.mat[3] = glm::vec4(min.x / SHADOW_DETAIL, mmin.y, min.z / SHADOW_DETAIL, 1);
+		}
+		else {
+			f.shadow = shadow_atlas.allocate_region(size.x, size.y);
+			f.mat[0] = glm::vec4(1 / SHADOW_DETAIL, 0, -n.x, 0);
+			f.mat[1] = glm::vec4(0, 1 / SHADOW_DETAIL, 0, 0);
+			f.mat[2] = glm::vec4(0, 0, 0, 0);
+			f.mat[3] = glm::vec4(min.x / SHADOW_DETAIL, min.y / SHADOW_DETAIL, mmin.z, 1);
+		}
+
+
+		f.inv_mat = glm::inverse(f.mat);
+
+		for (MapVertex& v : f.verts) {
+
+			if (abs.x > abs.y && abs.x > abs.z) {
+				v.uv2.x = v.pos.y * SHADOW_DETAIL - min.y;
+				v.uv2.y = v.pos.z * SHADOW_DETAIL - min.z;
+			}
+			else if (abs.y > abs.x && abs.y > abs.z) {
+				v.uv2.x = v.pos.x * SHADOW_DETAIL - min.x;
+				v.uv2.y = v.pos.z * SHADOW_DETAIL - min.z;
+			}
+			else {
+				v.uv2.x = v.pos.x * SHADOW_DETAIL - min.x;
+				v.uv2.y = v.pos.y * SHADOW_DETAIL - min.y;
+			}
+
+			v.uv2 += glm::vec2(f.shadow.x, f.shadow.y) + glm::vec2(0.5);
+			v.uv2 /= Atlas::SURFACE_SIZE;
+		}
+
+	}
+
+
 
 }
 

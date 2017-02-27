@@ -17,6 +17,7 @@ struct MapVertex {
 
 
 struct MapFace {
+	glm::vec3				normal;
 	glm::mat4				mat;
 	glm::mat4				inv_mat;
 	int						tex_nr;
