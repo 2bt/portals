@@ -28,7 +28,7 @@ Map::Map() {
 
 //	shadow_atlas.load_surface("sm.png");
 	for (Sector& s : sectors) setup_sector_faces(s);
-//	bake();
+	bake();
 	shadow_atlas.save();
 }
 
@@ -49,8 +49,8 @@ void Map::bake() {
 		loc.sector_nr = i;
 
 		for (const MapFace& f : s.faces)
-		for (int y = f.shadow.y; y < f.shadow.y + f.shadow.h; ++y)
-		for (int x = f.shadow.x; x < f.shadow.x + f.shadow.w; ++x) {
+		for (int y = 0; y < f.shadow.h; ++y)
+		for (int x = 0; x < f.shadow.w; ++x) {
 
 			loc.pos = glm::vec3(f.mat * glm::vec4(x, y, 02, 1));
 			srand(loc.pos.x * 100 + loc.pos.y * 171 + loc.pos.z * 31);
@@ -64,20 +64,19 @@ void Map::bake() {
 				for (int j = 0; j < 5; ++j) {
 					dir.x = 2 * rand_float() - 1;
 					dir.y = 2 * rand_float() - 1;
-					dir.z = rand_float();
+					dir.z = 2 * rand_float() - 1;
 					if (glm::length2(dir) <= 1) break;
 				}
 
-				dir = glm::vec3(f.mat * glm::vec4(dir, 0));
+				if (glm::dot(dir, f.normal) < 0) dir = -dir;
 
 				auto l = loc;
 				l.pos += dir * -0.1f;
 				float f = ray_intersect(l, dir, ref, normal, 30);
-//				float f = ray_intersect(loc, dir, ref, normal, 30);
 				a += f / 30 / N;
 			}
 
-			glm::u8vec3& pixel = *(glm::u8vec3 *) ((uint8_t * ) surf->pixels + y * surf->pitch + x * sizeof(glm::u8vec3));
+			glm::u8vec3& pixel = *(glm::u8vec3 *) ((uint8_t * ) surf->pixels + (y + f.shadow.y) * surf->pitch + (x + f.shadow.x) * sizeof(glm::u8vec3));
 			pixel.r = pixel.g = pixel.b = 255 * powf(a, 0.8);
 
 
@@ -181,36 +180,41 @@ void Map::setup_sector_faces(Sector& s) {
 			min = glm::min(min, v.pos);
 			max = glm::max(max, v.pos);
 		}
-		auto mmin = min;
-		auto mmax = max;
 		min = glm::floor(min * SHADOW_DETAIL);
 		max = glm::ceil(max * SHADOW_DETAIL);
 		glm::ivec3 size = max - min + glm::vec3(1);
+		min /= SHADOW_DETAIL;
+		max /= SHADOW_DETAIL;
 
 
+		auto nn = f.normal;
 		auto n = f.normal / SHADOW_DETAIL;
 		auto abs = glm::abs(n);
+		float o = 1 / SHADOW_DETAIL;
+
+		auto pp = f.verts.front().pos - min;
+		auto t = glm::dot(pp, nn);
 
 		if (abs.x > abs.y && abs.x > abs.z) {
 			f.shadow = shadow_atlas.allocate_region(size.y, size.z);
-			f.mat[0] = glm::vec4(0, 1 / SHADOW_DETAIL, 0, 0);
-			f.mat[1] = glm::vec4(n.x == abs.x ? -n.z : n.z, 0, 1 / SHADOW_DETAIL, 0);
-			f.mat[2] = glm::vec4(0, 0, 0, 0);
-			f.mat[3] = glm::vec4(n.x == abs.x ? mmax.x : mmin.x, min.y / SHADOW_DETAIL, min.z / SHADOW_DETAIL, 1);
+			f.mat[0] = glm::vec4(-n.y / nn.x, o, 0, 0);
+			f.mat[1] = glm::vec4(-n.z / nn.x, 0, o, 0);
+			f.mat[2] = glm::vec4(f.normal, 0);
+			f.mat[3] = glm::vec4(min.x + t / nn.x, min.y, min.z, 1);
 		}
 		else if (abs.y > abs.x && abs.y > abs.z) {
 			f.shadow = shadow_atlas.allocate_region(size.x, size.z);
-			f.mat[0] = glm::vec4(1 / SHADOW_DETAIL, 0, 0, 0);
-			f.mat[1] = glm::vec4(0, 0, 1 / SHADOW_DETAIL, 0);
-			f.mat[2] = glm::vec4(0, 0, 0, 0);
-			f.mat[3] = glm::vec4(min.x / SHADOW_DETAIL, mmin.y, min.z / SHADOW_DETAIL, 1);
+			f.mat[0] = glm::vec4(o, -n.x / nn.y, 0, 0);
+			f.mat[1] = glm::vec4(0, -n.z / nn.y, o, 0);
+			f.mat[2] = glm::vec4(f.normal, 0);
+			f.mat[3] = glm::vec4(min.x, min.y + t / nn.y, min.z, 1);
 		}
 		else {
 			f.shadow = shadow_atlas.allocate_region(size.x, size.y);
-			f.mat[0] = glm::vec4(1 / SHADOW_DETAIL, 0, -n.x, 0);
-			f.mat[1] = glm::vec4(0, 1 / SHADOW_DETAIL, 0, 0);
-			f.mat[2] = glm::vec4(0, 0, 0, 0);
-			f.mat[3] = glm::vec4(min.x / SHADOW_DETAIL, min.y / SHADOW_DETAIL, mmin.z, 1);
+			f.mat[0] = glm::vec4(o, 0, -n.x / nn.z, 0);
+			f.mat[1] = glm::vec4(0, o, -n.y / nn.z, 0);
+			f.mat[2] = glm::vec4(f.normal, 0);
+			f.mat[3] = glm::vec4(min.x, min.y, min.z + t / nn.z, 1);
 		}
 
 
@@ -219,18 +223,18 @@ void Map::setup_sector_faces(Sector& s) {
 		for (MapVertex& v : f.verts) {
 
 			if (abs.x > abs.y && abs.x > abs.z) {
-				v.uv2.x = v.pos.y * SHADOW_DETAIL - min.y;
-				v.uv2.y = v.pos.z * SHADOW_DETAIL - min.z;
+				v.uv2.x = v.pos.y - min.y;
+				v.uv2.y = v.pos.z - min.z;
 			}
 			else if (abs.y > abs.x && abs.y > abs.z) {
-				v.uv2.x = v.pos.x * SHADOW_DETAIL - min.x;
-				v.uv2.y = v.pos.z * SHADOW_DETAIL - min.z;
+				v.uv2.x = v.pos.x - min.x;
+				v.uv2.y = v.pos.z - min.z;
 			}
 			else {
-				v.uv2.x = v.pos.x * SHADOW_DETAIL - min.x;
-				v.uv2.y = v.pos.y * SHADOW_DETAIL - min.y;
+				v.uv2.x = v.pos.x - min.x;
+				v.uv2.y = v.pos.y - min.y;
 			}
-
+			v.uv2 *= SHADOW_DETAIL;
 			v.uv2 += glm::vec2(f.shadow.x, f.shadow.y) + glm::vec2(0.5);
 			v.uv2 /= Atlas::SURFACE_SIZE;
 		}
@@ -257,7 +261,7 @@ bool Map::load(const char* name) {
 			p += n;
 			s.walls.push_back({ glm::vec2(x, y) });
 		}
-		fscanf(f, "%f,%f\n", &s.floor_height, &s.ceil_height);
+		assert(fscanf(f, "%f,%f\n", &s.floor_height, &s.ceil_height) == 2);
 	}
 	fclose(f);
 	setup_portals();
@@ -431,6 +435,7 @@ float Map::ray_intersect(	const Location& loc, const glm::vec3& dir,
 							WallRef& ref, glm::vec3& normal, float max_factor) const {
 
 	ref.sector_nr = loc.sector_nr;
+	ref.wall_nr = 0;
 	float min_factor = 0;
 	glm::vec2 p(loc.pos.x, loc.pos.z);
 	glm::vec2 d(dir.x, dir.z);

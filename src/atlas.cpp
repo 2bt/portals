@@ -18,7 +18,9 @@ void Atlas::init() {
 bool Atlas::load_surface(const char* name) {
 	SDL_Surface* s = IMG_Load(name);
 	if (!s) return false;
-	m_surfaces.push_back(s);
+	SDL_Surface* t = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_RGB24, 0);
+	SDL_FreeSurface(s);
+	m_surfaces.push_back(t);
 	return true;
 }
 
@@ -36,7 +38,7 @@ AtlasRegion Atlas::allocate_region(int w, int h) {
 
 	bool found = false;
 
-	int xx;
+	int xx = 0;
 	int yy = SURFACE_SIZE - h;
 
 	for (int x = 0; x < SURFACE_SIZE - w;) {

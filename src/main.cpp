@@ -142,6 +142,7 @@ public:
 			}
 
 
+/*
 			glm::u8vec3 ccc[] = {
 				{ 255, 0, 0 },
 				{ 0, 255, 0 },
@@ -149,8 +150,11 @@ public:
 				{ 0, 100, 200 },
 				{ 0, 0, 200 },
 				{ 200, 0, 200 },
+				{ 100, 0, 200 },
+				{ 200, 0, 100 },
+				{ 200, 100, 100 },
+				{ 100, 100, 100 },
 			};
-
 //			for (auto& s : map.sectors)
 			{
 				int i = 0;
@@ -160,11 +164,15 @@ public:
 					renderer3D.set_color(c.r, c.g, c.b);
 					for (int y = 0; y < f.shadow.h; ++y) {
 						for (int x = 0; x < f.shadow.w; ++x) {
-							renderer3D.point(glm::vec3(f.mat * glm::vec4(x, y, 0.01, 1)));
+//							renderer3D.point(glm::vec3(f.mat * glm::vec4(x, y, 0, 1)));
+							renderer3D.line(
+								glm::vec3(f.mat * glm::vec4(x, y, 0, 1)),
+								glm::vec3(f.mat * glm::vec4(x, y, 1, 1)));
 						}
 					}
 				}
 			}
+//*/
 
 			renderer3D.set_color(0, 255, 0);
 			renderer3D.point(mark);
