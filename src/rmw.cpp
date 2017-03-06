@@ -80,6 +80,10 @@ constexpr uint32_t map_to_gl(CullFace cf) {
 	const uint32_t lut[] = { GL_FRONT, GL_BACK, GL_FRONT_AND_BACK };
 	return lut[static_cast<int>(cf)];
 }
+constexpr uint32_t map_to_gl(TextureFormat tf) {
+	const uint32_t lut[] = { GL_RGB, GL_RGBA, GL_DEPTH_COMPONENT, GL_STENCIL_INDEX, GL_DEPTH_STENCIL };
+	return lut[static_cast<int>(tf)];
+}
 
 
 
@@ -151,16 +155,7 @@ VertexBuffer::VertexBuffer(BufferHint hint) : GpuBuffer(GL_ARRAY_BUFFER, hint) {
 IndexBuffer::IndexBuffer(BufferHint hint) : GpuBuffer(GL_ELEMENT_ARRAY_BUFFER, hint) {}
 
 
-
-
-
-
-
-
-
-
 // shader
-
 
 static GLuint compile_shader(uint32_t type, const char* src) {
 	GLuint s = glCreateShader(type);
@@ -245,22 +240,14 @@ void gl_uniform(int l, const glm::vec4& v) { glUniform4fv(l, 1, &v.x); }
 void gl_uniform(int l, const glm::mat4& v) { glUniformMatrix4fv(l, 1, false, &v[0].x); }
 
 
-
 template <class T>
 void Shader::UniformExtend<T>::update() const {
 	if (!dirty) return;
 	dirty = false;
 	gl_uniform(location, value);
 }
-
-/*
-	// TODO:
-	int max_texture_units;
-	glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_texture_units);
-	std::vector<GLuint> bound_textures(max_texture_units);
-*/
 void Shader::UniformTexture2D::update() const {
-	// NOTE: this is hacky
+	// FIXME: this is hacky
 	// but what's the best way to select the unit?
 	int unit = location;
 	cache.bind_texture(unit, GL_TEXTURE_2D, handle);
@@ -268,39 +255,13 @@ void Shader::UniformTexture2D::update() const {
 }
 
 
-Framebuffer::Framebuffer(bool gen) {
-	if (gen) glGenFramebuffers(1, &m_handle);
-	else m_handle = 0;
-}
-Framebuffer::~Framebuffer() {
-	if (m_handle) glDeleteFramebuffers(1, &m_handle);
-}
-
+// texture
 
 Texture2D::Texture2D() {
 	glGenTextures(1, &m_handle);
 }
 Texture2D::~Texture2D() {
 	glDeleteTextures(1, &m_handle);
-}
-bool Texture2D::init(SDL_Surface* s) {
-	cache.bind_texture(0, GL_TEXTURE_2D, m_handle);
-
-//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-	int format = (s->format->BytesPerPixel == 4) ? GL_RGBA : GL_RGB;
-
-	glTexImage2D(GL_TEXTURE_2D, 0, format, s->w, s->h, 0, format, GL_UNSIGNED_BYTE, s->pixels);
-
-	glGenerateMipmap(GL_TEXTURE_2D);
-	return true;
 }
 bool Texture2D::init(const char* filename) {
 	SDL_Surface* s = IMG_Load(filename);
@@ -309,18 +270,70 @@ bool Texture2D::init(const char* filename) {
 	SDL_FreeSurface(s);
 	return true;
 }
+bool Texture2D::init(SDL_Surface* s) {
+	return init(
+		 (s->format->BytesPerPixel == 4) ? TextureFormat::RGBA : TextureFormat::RGB,
+		 s->w,
+		 s->h,
+		 s->pixels);
+}
+bool Texture2D::init(TextureFormat f, int w, int h, void* data) {
+	m_width  = w;
+	m_height = h;
+	m_format = f;
+
+	cache.bind_texture(0, GL_TEXTURE_2D, m_handle);
+
+//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, map_to_gl(m_format), m_width, m_height, 0, map_to_gl(m_format), GL_UNSIGNED_BYTE, data);
+
+//	glGenerateMipmap(GL_TEXTURE_2D);
+
+	return true;
+}
 
 
 
+// framebuffer
+
+Framebuffer::Framebuffer(bool gen) {
+	if (gen) glGenFramebuffers(1, &m_handle);
+	else m_handle = 0;
+}
+Framebuffer::~Framebuffer() {
+	if (m_handle) glDeleteFramebuffers(1, &m_handle);
+}
+void Framebuffer::attach_color(const Texture2D::Ptr& t) {
+	m_width  = t->m_width;
+	m_height = t->m_height;
+	cache.bind_framebuffer(m_handle);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+			GL_TEXTURE_2D, t->m_handle, 0);
+}
+void Framebuffer::attach_depth(const Texture2D::Ptr& t) {
+	m_width  = t->m_width;
+	m_height = t->m_height;
+	cache.bind_framebuffer(m_handle);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+			GL_TEXTURE_2D, t->m_handle, 0);
+}
 
 
-// Context
+// context
 
-
-bool Context::init(int width, int height, const char* title)
-{
-	m_viewport.w = width;
-	m_viewport.h = height;
+bool Context::init(int width, int height, const char* title) {
+	m_default_framebuffer = Framebuffer::Ptr(new Framebuffer(false));
+	m_default_framebuffer->m_width = width;
+	m_default_framebuffer->m_height = height;
 
 	SDL_Init(SDL_INIT_VIDEO);
 	IMG_Init(IMG_INIT_PNG);
@@ -332,7 +345,7 @@ bool Context::init(int width, int height, const char* title)
 
 	m_window = SDL_CreateWindow(title,
 			SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-			m_viewport.w, m_viewport.h,
+			width, height,
 			SDL_WINDOW_OPENGL /*| SDL_WINDOW_RESIZABLE*/);
 
 	SDL_GL_SetSwapInterval(-1); // v-sync
@@ -345,9 +358,6 @@ bool Context::init(int width, int height, const char* title)
 	glEnable(GL_PROGRAM_POINT_SIZE);
 
 
-	m_default_framebuffer = Framebuffer::Ptr(new Framebuffer(false));
-
-
 	// initialize the reder state according to opengl's initial state
 	m_render_state.cull_face_enabled = false;
 	m_render_state.depth_test_enabled = false;
@@ -356,8 +366,7 @@ bool Context::init(int width, int height, const char* title)
 	return true;
 }
 
-Context::~Context()
-{
+Context::~Context() {
 	SDL_GL_DeleteContext(m_gl_context);
 	SDL_DestroyWindow(m_window);
 	SDL_Quit();
@@ -369,10 +378,9 @@ bool Context::poll_event(SDL_Event& e) {
 	if (!SDL_PollEvent(&e)) return false;
 	if (e.type == SDL_WINDOWEVENT
 	&&  e.window.event == SDL_WINDOWEVENT_RESIZED) {
-		m_viewport.w = e.window.data1;
-		m_viewport.h = e.window.data2;
+		m_default_framebuffer->m_width  = e.window.data1;
+		m_default_framebuffer->m_height = e.window.data2;
 	}
-
 	return true;
 }
 
@@ -455,7 +463,6 @@ void Context::sync_render_state(const RenderState& rs) {
 					m_render_state.blend_color.a);
 		}
 	}
-
 }
 
 
@@ -465,7 +472,12 @@ void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const Verte
 	sync_render_state(rs);
 
 	// only consider RenderState::viewport if it's valid
-	const Viewport& vp = rs.viewport.w == 0 ? m_viewport : rs.viewport;
+	Viewport vp;
+	if (rs.viewport.w != 0) vp = rs.viewport;
+	else {
+		vp.w = fb->m_width;
+		vp.h = fb->m_height;
+	}
 	if (memcmp(&m_render_state.viewport, &vp, sizeof(Viewport)) != 0) {
 		m_render_state.viewport = vp;
 		glViewport( m_render_state.viewport.x,

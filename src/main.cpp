@@ -69,7 +69,7 @@ public:
 		shadow_map = rmw::context.create_texture_2D(map.shadow_atlas.m_surfaces[0]);
 	}
 
-	void draw() {
+	void draw(const rmw::RenderState& rs, const rmw::Framebuffer::Ptr& fb) {
 
 		for (Mesh& m : meshes) m.clear();
 
@@ -93,14 +93,12 @@ public:
 		shader->set_uniform("shadow", shadow_map);
 
 
-		rmw::RenderState rs;
-		rs.depth_test_enabled = true;
 
 		for (int i = 0; i < (int) meshes.size(); ++i) {
 			vertex_buffer->init_data(meshes[i]);
 			vertex_array->set_count(meshes[i].size());
 			shader->set_uniform("tex", textures[i]);
-			rmw::context.draw(rs, shader, vertex_array);
+			rmw::context.draw(rs, shader, vertex_array, fb);
 		}
 
 
@@ -214,6 +212,36 @@ int main(int argc, char** argv) {
 
 	renderer.init();
 
+	rmw::Texture2D::Ptr offscreen_color = rmw::context.create_texture_2D(rmw::TextureFormat::RGB, 400, 300);
+	rmw::Texture2D::Ptr offscreen_depth = rmw::context.create_texture_2D(rmw::TextureFormat::Depth, 400, 300);
+	rmw::Framebuffer::Ptr fb = rmw::context.create_framebuffer();
+	fb->attach_color(offscreen_color);
+	fb->attach_depth(offscreen_depth);
+
+	auto vb = rmw::context.create_vertex_buffer(rmw::BufferHint::StreamDraw);
+	std::vector<int8_t> data = { 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, };
+	vb->init_data(data);
+	auto va = rmw::context.create_vertex_array();
+	va->set_primitive_type(rmw::PrimitiveType::Triangles);
+	va->set_count(6);
+	va->set_attribute(0, vb, rmw::ComponentType::Int8, 2, false, 0, 2);
+	auto shader = rmw::context.create_shader(
+		R"(#version 330
+			layout(location = 0) in vec2 in_pos;
+			uniform mat4 mvp;
+			out vec2 ex_uv;
+			void main() {
+				gl_Position = vec4(in_pos * 2.0 - vec2(1.0), 0, 1.0);
+				ex_uv = in_pos;
+			})",
+		R"(#version 330
+			in vec2 ex_uv;
+			uniform sampler2D tex;
+			out vec4 out_color;
+			void main() {
+				out_color = vec4(texture(tex, ex_uv).rgb, 1);
+			})");
+	shader->set_uniform("tex", offscreen_color);
 
 	bool running = true;
 	while (running) {
@@ -248,15 +276,27 @@ int main(int argc, char** argv) {
 
 
 
-		rmw::context.clear(rmw::ClearState { { 0, 0, 0, 1 } });
 
-		// move player
+		// update
 		eye.update();
 
-		renderer.draw();
+
+
+		// render
+		rmw::context.clear(rmw::ClearState { { 0, 0, 0, 1 } });
+
+		rmw::RenderState rs;
+		rs.depth_test_enabled = true;
+
+
+		rmw::context.clear(rmw::ClearState { { 0, 0, 1, 1 } }, fb);
+		renderer.draw(rs, fb);
+
+		// draw quad
+		rmw::context.draw(rs, shader, va);
+
 
 		editor.draw();
-
 		rmw::context.flip_buffers();
 	}
 

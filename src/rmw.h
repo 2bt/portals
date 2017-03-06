@@ -170,32 +170,18 @@ private:
 };
 
 
-// frame buffer
-class Framebuffer {
-	friend class Context;
-public:
-	typedef std::unique_ptr<Framebuffer> Ptr;
-
-	~Framebuffer();
-
-private:
-	Framebuffer(const Framebuffer&) = delete;
-	Framebuffer& operator=(const Framebuffer&) = delete;
-	Framebuffer(bool gen = true);
-
-	uint32_t	m_handle;
-};
-
-
 // texture
 
+// TODO: mipmap
 enum class WrapMode { Clamp, Repeat, ClampZero, MirrowedRepeat };
-enum class FilterMode { Linear, Nearest }; // TODO: mipmap
+enum class FilterMode { Linear, Nearest };
+enum class TextureFormat { RGB, RGBA, Depth, Stencil, DepthStencil };
 
 
 class Texture2D {
 	friend class Context;
 	friend class Shader;
+	friend class Framebuffer;
 public:
 	typedef std::unique_ptr<Texture2D> Ptr;
 	~Texture2D();
@@ -205,6 +191,8 @@ public:
 	void set_wrap(WrapMode horiz, WrapMode vert);
 	void set_filter(FilterMode min, FilterMode mag);
 
+	int get_width() const	{ return m_width; }
+	int get_height() const	{ return m_height; }
 
 private:
 	Texture2D(const Texture2D&) = delete;
@@ -213,8 +201,35 @@ private:
 
 	bool init(SDL_Surface* s);
 	bool init(const char* filename);
+	bool init(TextureFormat f, int w, int h, void* data = nullptr);
 
+
+	int				m_width;
+	int				m_height;
+	TextureFormat	m_format;
 	uint32_t		m_handle;
+};
+
+
+// frame buffer
+class Framebuffer {
+	friend class Context;
+public:
+	typedef std::unique_ptr<Framebuffer> Ptr;
+
+	~Framebuffer();
+
+	void attach_color(const Texture2D::Ptr& t);
+	void attach_depth(const Texture2D::Ptr& t);
+
+private:
+	Framebuffer(const Framebuffer&) = delete;
+	Framebuffer& operator=(const Framebuffer&) = delete;
+	Framebuffer(bool gen = true);
+
+	uint32_t	m_handle;
+	int			m_width;
+	int			m_height;
 };
 
 
@@ -315,9 +330,9 @@ public:
 
 	bool poll_event(SDL_Event& e);
 
-	int get_width()  const { return m_viewport.w; }
-	int get_height() const { return m_viewport.h; }
-	float get_aspect_ratio() const { return m_viewport.w / (float) m_viewport.h; }
+	int get_width()  const { return m_default_framebuffer->m_width; }
+	int get_height() const { return m_default_framebuffer->m_height; }
+	float get_aspect_ratio() const { return get_width() / (float) get_height(); }
 
 
 	void clear(const ClearState& cs, const Framebuffer::Ptr& fb);
@@ -362,12 +377,14 @@ public:
 		return t;
 	}
 
+	const Framebuffer::Ptr& get_default_framebuffer() {
+		return m_default_framebuffer;
+	}
 
 private:
 	void sync_render_state(const RenderState& rs);
 
 	SDL_Window*			m_window;
-	Viewport			m_viewport;
 	SDL_GLContext		m_gl_context;
 
 	RenderState			m_render_state;
