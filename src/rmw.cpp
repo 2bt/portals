@@ -2,8 +2,42 @@
 #include <glm/glm.hpp>
 #include <GL/glew.h>
 
-
 namespace rmw {
+namespace {
+	class {
+	public:
+		void bind_vertex_array(uint32_t handle) {
+			if (m_vertex_array != handle) {
+				m_vertex_array = handle;
+				glBindVertexArray(handle);
+			}
+		}
+		void bind_framebuffer(uint32_t handle) {
+			if (m_framebuffer != handle) {
+				m_framebuffer = handle;
+				glBindFramebuffer(GL_FRAMEBUFFER, handle);
+			}
+		}
+
+		void bind_texture(int unit, uint32_t target, uint32_t handle) {
+			if (m_active_texture != unit) {
+				m_active_texture = unit;
+				glActiveTexture(GL_TEXTURE0 + unit);
+			}
+			if (m_textures[unit] != handle) {
+				m_textures[unit] = handle;
+				glBindTexture(target, handle);
+			}
+		}
+
+	private:
+		uint32_t					m_vertex_array;
+		uint32_t					m_framebuffer;
+
+		std::array<uint32_t, 80>	m_textures;
+		int							m_active_texture = 0;
+	} cache;
+}
 
 
 constexpr uint32_t map_to_gl(ComponentType t) {
@@ -55,60 +89,60 @@ VertexArray::VertexArray() {
 	m_count = 0;
 	m_indexed = false;
 	m_primitive_type = PrimitiveType::Triangles;
-	glGenVertexArrays(1, &m_va);
+	glGenVertexArrays(1, &m_handle);
 }
 VertexArray::~VertexArray() {
-	glDeleteVertexArrays(1, &m_va);
+	glDeleteVertexArrays(1, &m_handle);
 }
 
 
 void VertexArray::set_attribute(int i, const VertexBuffer::Ptr& vb, ComponentType component_type,
 								int component_count, bool normalized, int offset, int stride) {
-	glBindVertexArray(m_va);
+	cache.bind_vertex_array(m_handle);
 	vb->bind();
 	glEnableVertexAttribArray(i);
 	glVertexAttribPointer(i, component_count, map_to_gl(component_type), normalized, stride, reinterpret_cast<void*>(offset));
 }
 void VertexArray::set_attribute(int i, float f) {
-	glBindVertexArray(m_va);
+	cache.bind_vertex_array(m_handle);
 	glDisableVertexAttribArray(i);
 	glVertexAttrib1f(i, f);
 }
 void VertexArray::set_attribute(int i, const glm::vec2& v) {
-	glBindVertexArray(m_va);
+	cache.bind_vertex_array(m_handle);
 	glDisableVertexAttribArray(i);
 	glVertexAttrib2fv(i, &v.x);
 }
 void VertexArray::set_attribute(int i, const glm::vec3& v) {
-	glBindVertexArray(m_va);
+	cache.bind_vertex_array(m_handle);
 	glDisableVertexAttribArray(i);
 	glVertexAttrib3fv(i, &v.x);
 }
 void VertexArray::set_attribute(int i, const glm::vec4& v) {
-	glBindVertexArray(m_va);
+	cache.bind_vertex_array(m_handle);
 	glDisableVertexAttribArray(i);
 	glVertexAttrib4fv(i, &v.x);
 }
 
 void VertexArray::set_index_buffer(const IndexBuffer& ib) {
 	m_indexed = true;
-	glBindVertexArray(m_va);
+	cache.bind_vertex_array(m_handle);
 	ib.bind();
 }
 
 
 GpuBuffer::GpuBuffer(uint32_t target, BufferHint hint) : m_target(target), m_hint(hint), m_size(0) {
-	glGenBuffers(1, &m_b);
+	glGenBuffers(1, &m_handle);
 }
 GpuBuffer::~GpuBuffer() {
-	glDeleteBuffers(1, &m_b);
+	glDeleteBuffers(1, &m_handle);
 }
 void GpuBuffer::bind() const {
-	glBindBuffer(m_target, m_b);
+	glBindBuffer(m_target, m_handle);
 }
 void GpuBuffer::init_data(const void* data, int size) {
 	m_size = size;
-	glBindVertexArray(0);
+	cache.bind_vertex_array(0);
 	bind();
 	glBufferData(m_target, m_size, data, map_to_gl(m_hint));
 }
@@ -221,27 +255,32 @@ void Shader::UniformExtend<T>::update() const {
 
 /*
 	// TODO:
-	// cache bound textures to minimize calls to glBindTexture()
-	// cache this variable in Context
 	int max_texture_units;
 	glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &max_texture_units);
 	std::vector<GLuint> bound_textures(max_texture_units);
 */
 void Shader::UniformTexture2D::update() const {
 	// NOTE: this is hacky
-	// but what's the best way to do this?
+	// but what's the best way to select the unit?
 	int unit = location;
-	// TODO: set this via Context
-	glActiveTexture(GL_TEXTURE0 + unit);
-	glBindTexture(GL_TEXTURE_2D, handle);
+	cache.bind_texture(unit, GL_TEXTURE_2D, handle);
 	glUniform1i(location, unit);
 }
+
+
+Framebuffer::Framebuffer() {
+	glGenFramebuffers(1, &m_handle);
+}
+Framebuffer::~Framebuffer() {
+	glDeleteFramebuffers(1, &m_handle);
+}
+
 
 
 Texture2D::Texture2D(SDL_Surface* img) {
 
 	glGenTextures(1, &m_handle);
-	glBindTexture(GL_TEXTURE_2D, m_handle); // TODO: caching via Context
+	cache.bind_texture(0, GL_TEXTURE_2D, m_handle);
 
 //	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 //	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -296,6 +335,7 @@ bool Context::init(int width, int height, const char* title)
 	glEnable(GL_PROGRAM_POINT_SIZE);
 
 
+
 	// initialize the reder state according to opengl's initial state
 	m_render_state.cull_face_enabled = false;
 	m_render_state.depth_test_enabled = false;
@@ -336,7 +376,7 @@ void Context::clear(const ClearState& cs) {
 }
 
 
-void Context::sync_state(const RenderState& rs) {
+void Context::sync_render_state(const RenderState& rs) {
 	// depth
 	if (m_render_state.depth_test_enabled != rs.depth_test_enabled) {
 		m_render_state.depth_test_enabled = rs.depth_test_enabled;
@@ -408,7 +448,7 @@ void Context::sync_state(const RenderState& rs) {
 void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const VertexArray::Ptr& va) {
 	if (va->m_count == 0) return;
 
-	sync_state(rs);
+	sync_render_state(rs);
 
 	// only consider RenderState::viewport if it's valid
 	const Viewport& vp = rs.viewport.w == 0 ? m_viewport : rs.viewport;
@@ -433,7 +473,8 @@ void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const Verte
 	m_shader->update_uniforms();
 
 
-	glBindVertexArray(va->m_va);
+	cache.bind_vertex_array(va->m_handle);
+
 
 	if (va->m_indexed) {
 		glDrawElements(map_to_gl(va->m_primitive_type), va->m_count, GL_UNSIGNED_INT,
@@ -465,7 +506,6 @@ Texture2D::Ptr Context::create_texture_2D(const char* file) const {
 }
 
 
-// the singleton
 rmw::Context context;
 
 

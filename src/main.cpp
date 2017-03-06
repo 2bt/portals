@@ -52,7 +52,7 @@ public:
 				uniform sampler2D shadow;
 				out vec4 out_color;
 				void main() {
-					vec4 c = texture(tex, ex_uv) * (0.3 + 0.7 * texture(shadow, ex_uv2));
+					vec4 c = texture(tex, ex_uv) * texture(shadow, ex_uv2);
 					out_color = vec4(c.rgb * pow(0.99, ex_depth), c.a);
 				})");
 
@@ -67,7 +67,6 @@ public:
 		textures[1] = rmw::context.create_texture_2D("media/floor.png");
 		textures[2] = rmw::context.create_texture_2D("media/ceil.png");
 		shadow_map = rmw::context.create_texture_2D(map.shadow_atlas.m_surfaces[0]);
-		shader->set_uniform("shadow", shadow_map);
 	}
 
 	void draw() {
@@ -91,6 +90,7 @@ public:
 
 		glm::mat4 mat_view = eye.get_view_mtx();
 		shader->set_uniform("mvp", mat_perspective * mat_view);
+		shader->set_uniform("shadow", shadow_map);
 
 
 		rmw::RenderState rs;
@@ -130,15 +130,17 @@ public:
 				float f = map.ray_intersect(eye.get_location(), dir, ref, mark_normal);
 				mark = eye.get_location().pos + dir * f;
 
-//				if (ref.wall_nr == -2) {
-//					auto& fs = map.sectors[ref.sector_nr].faces;
-//					auto& f = fs[fs.size() - 2];
-//					auto t = glm::ivec2(glm::floor(glm::vec2(f.inv_mat * glm::vec4(mark, 1)) + glm::vec2(0.5)));
-//					auto s = map.shadow_atlas.m_surfaces[0];
-//					auto p = (glm::u8vec3 *) ((uint8_t * ) s->pixels + t.y * s->pitch + t.x * sizeof(glm::u8vec3));
-//					p->r = 255;
-//					shadow_map = rmw::context.create_texture_2D(s);
-//				}
+				if (ref.wall_nr == -2) {
+					auto& fs = map.sectors[ref.sector_nr].faces;
+					auto& f = fs[fs.size() - 2];
+					auto t = glm::ivec2(glm::floor(glm::vec2(f.inv_mat * glm::vec4(mark, 1)) + glm::vec2(0.5)));
+					auto s = map.shadow_atlas.m_surfaces[0];
+					auto p = (glm::u8vec3 *) ((uint8_t * ) s->pixels + (t.y + f.shadow.y) * s->pitch + (t.x + f.shadow.x) * sizeof(glm::u8vec3));
+					p->r = 255;
+					p->g = 0;
+					p->b = 0;
+					shadow_map = rmw::context.create_texture_2D(s);
+				}
 			}
 
 

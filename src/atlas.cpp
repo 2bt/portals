@@ -13,6 +13,7 @@ Atlas::~Atlas() {
 void Atlas::init() {
 	for (SDL_Surface* s : m_surfaces) SDL_FreeSurface(s);
 	m_surfaces.clear();
+	m_surface_loaded = false;
 }
 
 bool Atlas::load_surface(const char* name) {
@@ -21,6 +22,7 @@ bool Atlas::load_surface(const char* name) {
 	SDL_Surface* t = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_RGB24, 0);
 	SDL_FreeSurface(s);
 	m_surfaces.push_back(t);
+	m_surface_loaded = true;
 	return true;
 }
 
@@ -67,22 +69,24 @@ AtlasRegion Atlas::allocate_region(int w, int h) {
 	r.h = h;
 
 
-	// fill region with random color
-	glm::u8vec3 color;
-	color.r = rand() % 256;
-	color.g = rand() % 256;
-	color.b = rand() % 256;
-	SDL_Surface* s = m_surfaces.back();
-	for (int x = r.x; x < r.x + r.w; ++x)
-	for (int y = r.y; y < r.y + r.h; ++y) {
-		glm::u8vec3& p = *(glm::u8vec3 *) ((uint8_t * ) s->pixels + y * s->pitch + x * sizeof(glm::u8vec3));
-		if (x == r.x || x == r.x + r.w - 1 || y == r.y || y == r.y + r.h - 1) {
-			p = color;
-		}
-		else if ((x ^ y) & 1) {
-			p.r = color.r / 2;
-			p.g = color.g / 2;
-			p.b = color.b / 2;
+	if (!m_surface_loaded) {
+		// fill region with random color
+		glm::u8vec3 color;
+		color.r = rand() % 256;
+		color.g = rand() % 256;
+		color.b = rand() % 256;
+		SDL_Surface* s = m_surfaces.back();
+		for (int x = r.x; x < r.x + r.w; ++x)
+		for (int y = r.y; y < r.y + r.h; ++y) {
+			glm::u8vec3& p = *(glm::u8vec3 *) ((uint8_t * ) s->pixels + y * s->pitch + x * sizeof(glm::u8vec3));
+			if (x == r.x || x == r.x + r.w - 1 || y == r.y || y == r.y + r.h - 1) {
+				p = color;
+			}
+			else if ((x ^ y) & 1) {
+				p.r = color.r / 2;
+				p.g = color.g / 2;
+				p.b = color.b / 2;
+			}
 		}
 	}
 

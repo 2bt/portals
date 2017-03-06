@@ -26,18 +26,68 @@ namespace std {
 Map::Map() {
 	load("map.txt");
 
-//	shadow_atlas.load_surface("sm.png");
+	shadow_atlas.load_surface("sm.png");
 	for (Sector& s : sectors) setup_sector_faces(s);
-	bake();
-	shadow_atlas.save();
+//	bake();
+//	shadow_atlas.save();
 }
 
 
 static float rand_float() { return rand() / (float) RAND_MAX; }
 
 
+
+bool Map::fix_sector(Location& loc) const {
+
+	glm::vec2 p(loc.pos.x, loc.pos.z);
+
+	std::vector<int> visited;
+	std::queue<int> todo({ loc.sector_nr });
+	while (!todo.empty() && visited.size() < 15) {
+		int nr = todo.front();
+		todo.pop();
+		visited.push_back(nr);
+
+		const Sector& s = sectors[nr];
+
+		if (loc.pos.y > s.ceil_height || loc.pos.y < s.floor_height) {
+			continue;
+		}
+
+		bool success = false;
+		for (int j = 0; j < (int) s.walls.size(); ++j) {
+			const glm::vec2& w1 = s.walls[j].pos;
+			const glm::vec2& w2 = s.walls[(j + 1) % s.walls.size()].pos;
+			glm::vec2 ww = w2 - w1;
+			glm::vec2 pw = p - w1;
+			if ((w1.y <= p.y) == (w2.y > p.y) && (pw.x < ww.x * pw.y / ww.y)) {
+				success = !success;
+			}
+		}
+
+		if (success) {
+			loc.sector_nr = nr;
+			return true;
+		}
+
+		for (int j = 0; j < (int) s.walls.size(); ++j) {
+			const Wall& w = s.walls[j];
+			glm::vec2 ww = s.walls[(j + 1) % s.walls.size()].pos - w.pos;
+			if (cross(w.pos - p, ww) > 0)
+			for (const WallRef& r : w.refs) {
+				if (std::find(visited.begin(), visited.end(), r.sector_nr) == visited.end()) {
+					todo.push(r.sector_nr);
+				}
+			}
+		}
+	}
+	return false;
+}
+
+
 void Map::bake() {
 	SDL_Surface* surf = shadow_atlas.m_surfaces[0];
+
 
 	for (int i = 0; i < (int) sectors.size(); ++i) {
 
@@ -46,38 +96,69 @@ void Map::bake() {
 		const Sector& s = sectors[i];
 
 		Location loc;
-		loc.sector_nr = i;
 
-		for (const MapFace& f : s.faces)
-		for (int y = 0; y < f.shadow.h; ++y)
-		for (int x = 0; x < f.shadow.w; ++x) {
+		for (const MapFace& f : s.faces) {
 
-			loc.pos = glm::vec3(f.mat * glm::vec4(x, y, 02, 1));
-			srand(loc.pos.x * 100 + loc.pos.y * 171 + loc.pos.z * 31);
+			auto pix = [
+				data = (uint8_t *) surf->pixels,
+				 xx = f.shadow.x,
+				 yy = f.shadow.y,
+				 pitch = surf->pitch
+			](int x, int y) -> glm::u8vec3& {
+				return *(glm::u8vec3 *) (data + (y + yy) * pitch + (x + xx) * sizeof(glm::u8vec3));
+			};
 
-			float a = 0;
-			int N = 2000;
-			for (int k = 0; k < N; ++k) {
-				glm::vec3 normal;
-				WallRef ref;
-				glm::vec3 dir;
-				for (int j = 0; j < 5; ++j) {
-					dir.x = 2 * rand_float() - 1;
-					dir.y = 2 * rand_float() - 1;
-					dir.z = 2 * rand_float() - 1;
-					if (glm::length2(dir) <= 1) break;
+			for (int y = 0; y < f.shadow.h; ++y)
+			for (int x = 0; x < f.shadow.w; ++x) {
+
+				glm::u8vec3& pixel = pix(x, y);
+
+				loc.sector_nr = i;
+				loc.pos = glm::vec3(f.mat * glm::vec4(x + 0.01, y + 0.01, 0, 1)) + f.normal * 0.01f;
+				if (!fix_sector(loc)) {
+					pixel = { 255, 0, 0 };
+					continue;
 				}
 
-				if (glm::dot(dir, f.normal) < 0) dir = -dir;
 
-				auto l = loc;
-				l.pos += dir * -0.1f;
-				float f = ray_intersect(l, dir, ref, normal, 30);
-				a += f / 30 / N;
+				float a = 0;
+				int N = 10000;
+				for (int k = 0; k < N; ++k) {
+					glm::vec3 normal;
+					WallRef ref;
+					glm::vec3 dir;
+					for (int j = 0; j < 5; ++j) {
+						dir.x = 2 * rand_float() - 1;
+						dir.y = 2 * rand_float() - 1;
+						dir.z = 2 * rand_float() - 1;
+						if (glm::length2(dir) <= 1) break;
+					}
+
+					if (glm::dot(dir, f.normal) < 0) dir = -dir;
+
+					float f = ray_intersect(loc, dir, ref, normal, 60);
+					a += f / 60 / N;
+				}
+
+				pixel.r = pixel.g = pixel.b = 255 * powf(a, 1.3);
+
 			}
 
-			glm::u8vec3& pixel = *(glm::u8vec3 *) ((uint8_t * ) surf->pixels + (y + f.shadow.y) * surf->pitch + (x + f.shadow.x) * sizeof(glm::u8vec3));
-			pixel.r = pixel.g = pixel.b = 255 * powf(a, 0.8);
+
+			for (int y = 0; y < f.shadow.h; ++y)
+			for (int x = 0; x < f.shadow.w; ++x) {
+				glm::u8vec3& p = pix(x, y);
+				if (p == glm::u8vec3(255, 0, 0)) {
+					p = { 255, 255, 255 };
+
+					if (x > 0 && pix(x - 1, y) != glm::u8vec3(255, 0, 0)) p = glm::min(p, pix(x - 1, y));
+					if (x < f.shadow.w - 1 && pix(x + 1, y) != glm::u8vec3(255, 0, 0)) p = glm::min(p, pix(x + 1, y));
+					if (y > 0 && pix(x, y - 1) != glm::u8vec3(255, 0, 0)) p = glm::min(p, pix(x, y - 1));
+					if (y < f.shadow.h - 1 && pix(x, y + 1) != glm::u8vec3(255, 0, 0)) p = glm::min(p, pix(x, y + 1));
+
+
+				}
+			}
 
 
 		}
@@ -85,7 +166,8 @@ void Map::bake() {
 }
 
 
-#define SHADOW_DETAIL 0.25f
+//#define SHADOW_DETAIL 0.5f
+#define SHADOW_DETAIL 1.0f
 
 
 void Map::setup_sector_faces(Sector& s) {

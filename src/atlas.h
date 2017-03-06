@@ -29,7 +29,7 @@ public:
 
 	std::vector<SDL_Surface*>			m_surfaces;
 	std::array<int, SURFACE_SIZE>		m_columns;
-
+	bool								m_surface_loaded = false;
 
 	void add_surface();
 };

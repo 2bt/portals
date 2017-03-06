@@ -89,7 +89,7 @@ protected:
 	uint32_t	m_target;
 	BufferHint	m_hint;
 	int			m_size;
-	uint32_t	m_b;
+	uint32_t	m_handle;
 };
 
 
@@ -166,9 +166,24 @@ private:
 	int						m_count;
 	bool					m_indexed;
 	PrimitiveType			m_primitive_type;
-	uint32_t				m_va;
+	uint32_t				m_handle;
 };
 
+
+// frame buffer
+class Framebuffer {
+public:
+	typedef std::unique_ptr<Framebuffer> Ptr;
+
+	~Framebuffer();
+
+private:
+	Framebuffer(const Framebuffer&) = delete;
+	Framebuffer& operator=(const Framebuffer&) = delete;
+	Framebuffer();
+
+	uint32_t	m_handle;
+};
 
 // texture
 
@@ -326,15 +341,15 @@ public:
 
 
 private:
-	void sync_state(const RenderState& rs);
+	void sync_render_state(const RenderState& rs);
 
-	SDL_Window*		m_window;
-	Viewport		m_viewport;
-	SDL_GLContext	m_gl_context;
+	SDL_Window*			m_window;
+	Viewport			m_viewport;
+	SDL_GLContext		m_gl_context;
 
-	RenderState		m_render_state;
-	ClearState		m_clear_state;
-	const Shader*	m_shader;
+	RenderState			m_render_state;
+	ClearState			m_clear_state;
+	const Shader*		m_shader;
 };
 
 

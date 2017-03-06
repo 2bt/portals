@@ -88,6 +88,8 @@ public:
 	void	bake();
 	Atlas	shadow_atlas;
 
+	// try to adjust sector nr of location
+	bool	fix_sector(Location& loc) const;
 };
 
 
