@@ -268,11 +268,12 @@ void Shader::UniformTexture2D::update() const {
 }
 
 
-Framebuffer::Framebuffer() {
-	glGenFramebuffers(1, &m_handle);
+Framebuffer::Framebuffer(bool gen) {
+	if (gen) glGenFramebuffers(1, &m_handle);
+	else m_handle = 0;
 }
 Framebuffer::~Framebuffer() {
-	glDeleteFramebuffers(1, &m_handle);
+	if (m_handle) glDeleteFramebuffers(1, &m_handle);
 }
 
 
@@ -344,6 +345,8 @@ bool Context::init(int width, int height, const char* title)
 	glEnable(GL_PROGRAM_POINT_SIZE);
 
 
+	m_default_framebuffer = Framebuffer::Ptr(new Framebuffer(false));
+
 
 	// initialize the reder state according to opengl's initial state
 	m_render_state.cull_face_enabled = false;
@@ -374,12 +377,14 @@ bool Context::poll_event(SDL_Event& e) {
 }
 
 
-void Context::clear(const ClearState& cs) {
+void Context::clear(const ClearState& cs, const Framebuffer::Ptr& fb) {
 
 	if (m_clear_state.color != cs.color) {
 		m_clear_state.color = cs.color;
 		glClearColor(m_clear_state.color.x, m_clear_state.color.y, m_clear_state.color.z, m_clear_state.color.w);
 	}
+
+	cache.bind_framebuffer(fb->m_handle);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
@@ -454,7 +459,7 @@ void Context::sync_render_state(const RenderState& rs) {
 }
 
 
-void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const VertexArray::Ptr& va) {
+void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const VertexArray::Ptr& va, const Framebuffer::Ptr& fb) {
 	if (va->m_count == 0) return;
 
 	sync_render_state(rs);
@@ -481,9 +486,9 @@ void Context::draw(const RenderState& rs, const Shader::Ptr& shader, const Verte
 	}
 	m_shader->update_uniforms();
 
-
 	cache.bind_vertex_array(va->m_handle);
 
+	cache.bind_framebuffer(fb->m_handle);
 
 	if (va->m_indexed) {
 		glDrawElements(map_to_gl(va->m_primitive_type), va->m_count, GL_UNSIGNED_INT,

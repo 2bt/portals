@@ -181,7 +181,7 @@ public:
 private:
 	Framebuffer(const Framebuffer&) = delete;
 	Framebuffer& operator=(const Framebuffer&) = delete;
-	Framebuffer();
+	Framebuffer(bool gen = true);
 
 	uint32_t	m_handle;
 };
@@ -320,8 +320,16 @@ public:
 	float get_aspect_ratio() const { return m_viewport.w / (float) m_viewport.h; }
 
 
-	void clear(const ClearState& cs);
-	void draw(const RenderState& rs, const Shader::Ptr& shader, const VertexArray::Ptr& va);
+	void clear(const ClearState& cs, const Framebuffer::Ptr& fb);
+	void clear(const ClearState& cs) {
+		clear(cs, m_default_framebuffer);
+	}
+
+	void draw(const RenderState& rs, const Shader::Ptr& shader, const VertexArray::Ptr& va, const Framebuffer::Ptr& fb);
+	void draw(const RenderState& rs, const Shader::Ptr& shader, const VertexArray::Ptr& va) {
+		draw(rs, shader, va, m_default_framebuffer);
+	}
+
 	void flip_buffers() const;
 
 
@@ -365,6 +373,8 @@ private:
 	RenderState			m_render_state;
 	ClearState			m_clear_state;
 	const Shader*		m_shader;
+
+	Framebuffer::Ptr	m_default_framebuffer;
 };
 
 
