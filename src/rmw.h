@@ -172,6 +172,7 @@ private:
 
 // frame buffer
 class Framebuffer {
+	friend class Context;
 public:
 	typedef std::unique_ptr<Framebuffer> Ptr;
 
@@ -184,6 +185,7 @@ private:
 
 	uint32_t	m_handle;
 };
+
 
 // texture
 
@@ -199,13 +201,18 @@ public:
 	~Texture2D();
 
 
-	// sampler stuff
+	// TODO: sampler stuff
 	void set_wrap(WrapMode horiz, WrapMode vert);
 	void set_filter(FilterMode min, FilterMode mag);
 
 
 private:
-	Texture2D(SDL_Surface* img);
+	Texture2D(const Texture2D&) = delete;
+	Texture2D& operator=(const Texture2D&) = delete;
+	Texture2D();
+
+	bool init(SDL_Surface* s);
+	bool init(const char* filename);
 
 	uint32_t		m_handle;
 };
@@ -336,8 +343,16 @@ public:
 		return VertexArray::Ptr(new VertexArray());
 	}
 
-	Texture2D::Ptr create_texture_2D(SDL_Surface* img) const;
-	Texture2D::Ptr create_texture_2D(const char* file) const;
+	Framebuffer::Ptr create_framebuffer() const {
+		return Framebuffer::Ptr(new Framebuffer());
+	}
+
+	template<typename... Args>
+	Texture2D::Ptr create_texture_2D(Args&&... args) const {
+		Texture2D::Ptr t(new Texture2D());
+		if (!t->init(std::forward<Args>(args)...)) return nullptr;
+		return t;
+	}
 
 
 private:

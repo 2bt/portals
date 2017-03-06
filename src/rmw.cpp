@@ -276,10 +276,13 @@ Framebuffer::~Framebuffer() {
 }
 
 
-
-Texture2D::Texture2D(SDL_Surface* img) {
-
+Texture2D::Texture2D() {
 	glGenTextures(1, &m_handle);
+}
+Texture2D::~Texture2D() {
+	glDeleteTextures(1, &m_handle);
+}
+bool Texture2D::init(SDL_Surface* s) {
 	cache.bind_texture(0, GL_TEXTURE_2D, m_handle);
 
 //	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -291,15 +294,21 @@ Texture2D::Texture2D(SDL_Surface* img) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-	int format = (img->format->BytesPerPixel == 4) ? GL_RGBA : GL_RGB;
+	int format = (s->format->BytesPerPixel == 4) ? GL_RGBA : GL_RGB;
 
-	glTexImage2D(GL_TEXTURE_2D, 0, format, img->w, img->h, 0, format, GL_UNSIGNED_BYTE, img->pixels);
+	glTexImage2D(GL_TEXTURE_2D, 0, format, s->w, s->h, 0, format, GL_UNSIGNED_BYTE, s->pixels);
 
 	glGenerateMipmap(GL_TEXTURE_2D);
+	return true;
 }
-Texture2D::~Texture2D() {
-	glDeleteTextures(1, &m_handle);
+bool Texture2D::init(const char* filename) {
+	SDL_Surface* s = IMG_Load(filename);
+	if (!s) return false;
+	init(s);
+	SDL_FreeSurface(s);
+	return true;
 }
+
 
 
 
@@ -491,19 +500,6 @@ void Context::flip_buffers() const {
 	SDL_GL_SwapWindow(m_window);
 }
 
-
-Texture2D::Ptr Context::create_texture_2D(SDL_Surface* img) const {
-	return Texture2D::Ptr(new Texture2D(img));
-}
-
-
-Texture2D::Ptr Context::create_texture_2D(const char* file) const {
-	SDL_Surface* img = IMG_Load(file);
-	if (!img) return nullptr;
-	Texture2D::Ptr tex(new Texture2D(img));
-	SDL_FreeSurface(img);
-	return tex;
-}
 
 
 rmw::Context context;
