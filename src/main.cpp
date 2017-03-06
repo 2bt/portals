@@ -212,11 +212,6 @@ int main(int argc, char** argv) {
 
 	renderer.init();
 
-	rmw::Texture2D::Ptr offscreen_color = rmw::context.create_texture_2D(rmw::TextureFormat::RGB, 400, 300);
-	rmw::Texture2D::Ptr offscreen_depth = rmw::context.create_texture_2D(rmw::TextureFormat::Depth, 400, 300);
-	rmw::Framebuffer::Ptr fb = rmw::context.create_framebuffer();
-	fb->attach_color(offscreen_color);
-	fb->attach_depth(offscreen_depth);
 
 	auto vb = rmw::context.create_vertex_buffer(rmw::BufferHint::StreamDraw);
 	std::vector<int8_t> data = { 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, };
@@ -241,7 +236,11 @@ int main(int argc, char** argv) {
 			void main() {
 				out_color = vec4(texture(tex, ex_uv).rgb, 1);
 			})");
-	shader->set_uniform("tex", offscreen_color);
+	rmw::Framebuffer::Ptr fb = rmw::context.create_framebuffer();
+	rmw::Texture2D::Ptr offscreen_color = rmw::context.create_texture_2D(rmw::TextureFormat::RGB, rmw::context.get_width() / 4, rmw::context.get_height() / 4);
+	rmw::Texture2D::Ptr offscreen_depth = rmw::context.create_texture_2D(rmw::TextureFormat::Depth, rmw::context.get_width() / 4, rmw::context.get_height() / 4);
+	fb->attach_color(offscreen_color);
+	fb->attach_depth(offscreen_depth);
 
 	bool running = true;
 	while (running) {
@@ -270,6 +269,15 @@ int main(int argc, char** argv) {
 				editor.mouse_wheel(e.wheel);
 				break;
 
+			case SDL_WINDOWEVENT:
+				if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
+					offscreen_color = rmw::context.create_texture_2D(rmw::TextureFormat::RGB, rmw::context.get_width() / 4, rmw::context.get_height() / 4);
+					offscreen_depth = rmw::context.create_texture_2D(rmw::TextureFormat::Depth, rmw::context.get_width() / 4, rmw::context.get_height() / 4);
+					fb->attach_color(offscreen_color);
+					fb->attach_depth(offscreen_depth);
+				}
+				break;
+
 			default: break;
 			}
 		}
@@ -293,6 +301,7 @@ int main(int argc, char** argv) {
 		renderer.draw(rs, fb);
 
 		// draw quad
+		shader->set_uniform("tex", offscreen_color);
 		rmw::context.draw(rs, shader, va);
 
 

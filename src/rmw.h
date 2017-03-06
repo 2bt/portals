@@ -172,9 +172,8 @@ private:
 
 // texture
 
-// TODO: mipmap
-enum class WrapMode { Clamp, Repeat, ClampZero, MirrowedRepeat };
-enum class FilterMode { Linear, Nearest };
+//enum class WrapMode { Clamp, Repeat, ClampZero, MirrowedRepeat };
+enum class FilterMode { Nearest, Linear, Trilinear };
 enum class TextureFormat { RGB, RGBA, Depth, Stencil, DepthStencil };
 
 
@@ -188,8 +187,8 @@ public:
 
 
 	// TODO: sampler stuff
-	void set_wrap(WrapMode horiz, WrapMode vert);
-	void set_filter(FilterMode min, FilterMode mag);
+//	void set_wrap(WrapMode horiz, WrapMode vert);
+//	void set_filter(FilterMode min, FilterMode mag);
 
 	int get_width() const	{ return m_width; }
 	int get_height() const	{ return m_height; }
@@ -201,7 +200,7 @@ private:
 
 	bool init(SDL_Surface* s);
 	bool init(const char* filename);
-	bool init(TextureFormat f, int w, int h, void* data = nullptr);
+	bool init(TextureFormat format, int w, int h, void* data = nullptr, FilterMode filter = FilterMode::Nearest);
 
 
 	int				m_width;

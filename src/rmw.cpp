@@ -273,30 +273,37 @@ bool Texture2D::init(const char* filename) {
 bool Texture2D::init(SDL_Surface* s) {
 	return init(
 		 (s->format->BytesPerPixel == 4) ? TextureFormat::RGBA : TextureFormat::RGB,
-		 s->w,
-		 s->h,
-		 s->pixels);
+		 s->w, s->h, s->pixels, FilterMode::Trilinear);
 }
-bool Texture2D::init(TextureFormat f, int w, int h, void* data) {
+bool Texture2D::init(TextureFormat format, int w, int h, void* data, FilterMode filter) {
 	m_width  = w;
 	m_height = h;
-	m_format = f;
+	m_format = format;
 
 	cache.bind_texture(0, GL_TEXTURE_2D, m_handle);
 
-//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	if (filter == FilterMode::Nearest) {
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
+	else {
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		if (filter == FilterMode::Trilinear) {
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		}
+		else {
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		}
+	}
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, map_to_gl(m_format), m_width, m_height, 0, map_to_gl(m_format), GL_UNSIGNED_BYTE, data);
 
-//	glGenerateMipmap(GL_TEXTURE_2D);
+	if (filter == FilterMode::Trilinear) {
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
 
 	return true;
 }
@@ -313,18 +320,22 @@ Framebuffer::~Framebuffer() {
 	if (m_handle) glDeleteFramebuffers(1, &m_handle);
 }
 void Framebuffer::attach_color(const Texture2D::Ptr& t) {
-	m_width  = t->m_width;
-	m_height = t->m_height;
+	if (t) {
+		m_width  = t->m_width;
+		m_height = t->m_height;
+	}
 	cache.bind_framebuffer(m_handle);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-			GL_TEXTURE_2D, t->m_handle, 0);
+			GL_TEXTURE_2D, t ? t->m_handle : 0, 0);
 }
 void Framebuffer::attach_depth(const Texture2D::Ptr& t) {
-	m_width  = t->m_width;
-	m_height = t->m_height;
+	if (t) {
+		m_width  = t->m_width;
+		m_height = t->m_height;
+	}
 	cache.bind_framebuffer(m_handle);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-			GL_TEXTURE_2D, t->m_handle, 0);
+			GL_TEXTURE_2D, t ? t->m_handle : 0, 0);
 }
 
 
