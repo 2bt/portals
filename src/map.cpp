@@ -26,10 +26,12 @@ namespace std {
 Map::Map() {
 	load("map.txt");
 
-	shadow_atlas.load_surface("sm.png");
+	bool loaded = shadow_atlas.load_surface("sm.png");
 	for (Sector& s : sectors) setup_sector_faces(s);
-//	bake();
-//	shadow_atlas.save();
+	if (!loaded) {
+		bake();
+		shadow_atlas.save();
+	}
 }
 
 
@@ -166,14 +168,13 @@ void Map::bake() {
 }
 
 
-//#define SHADOW_DETAIL 0.5f
-#define SHADOW_DETAIL 1.0f
+#define SHADOW_DETAIL 0.5f
 
 
 void Map::setup_sector_faces(Sector& s) {
 
 	// walls
-
+	// TODO: fix T junctions
 	s.faces.clear();
 	auto generate_wall_face = [this, &s](const glm::vec2& p1, float y1, const glm::vec2& p2, float y2) {
 		float u1, u2;
