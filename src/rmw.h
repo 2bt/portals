@@ -185,6 +185,9 @@ public:
 	typedef std::unique_ptr<Texture2D> Ptr;
 	~Texture2D();
 
+	bool init(SDL_Surface* s, FilterMode filter = FilterMode::Trilinear);
+	bool init(const char* filename, FilterMode filter = FilterMode::Trilinear);
+	bool init(TextureFormat format, int w, int h, void* data = nullptr, FilterMode filter = FilterMode::Nearest);
 
 	// TODO: sampler stuff
 //	void set_wrap(WrapMode horiz, WrapMode vert);
@@ -198,9 +201,6 @@ private:
 	Texture2D& operator=(const Texture2D&) = delete;
 	Texture2D();
 
-	bool init(SDL_Surface* s);
-	bool init(const char* filename);
-	bool init(TextureFormat format, int w, int h, void* data = nullptr, FilterMode filter = FilterMode::Nearest);
 
 
 	int				m_width;

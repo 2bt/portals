@@ -263,17 +263,17 @@ Texture2D::Texture2D() {
 Texture2D::~Texture2D() {
 	glDeleteTextures(1, &m_handle);
 }
-bool Texture2D::init(const char* filename) {
+bool Texture2D::init(const char* filename, FilterMode filter) {
 	SDL_Surface* s = IMG_Load(filename);
 	if (!s) return false;
-	init(s);
+	init(s, filter);
 	SDL_FreeSurface(s);
 	return true;
 }
-bool Texture2D::init(SDL_Surface* s) {
+bool Texture2D::init(SDL_Surface* s, FilterMode filter) {
 	return init(
 		 (s->format->BytesPerPixel == 4) ? TextureFormat::RGBA : TextureFormat::RGB,
-		 s->w, s->h, s->pixels, FilterMode::Trilinear);
+		 s->w, s->h, s->pixels, filter);
 }
 bool Texture2D::init(TextureFormat format, int w, int h, void* data, FilterMode filter) {
 	m_width  = w;

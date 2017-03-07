@@ -66,8 +66,9 @@ public:
 		textures[0] = rmw::context.create_texture_2D("media/wall.png");
 		textures[1] = rmw::context.create_texture_2D("media/floor.png");
 		textures[2] = rmw::context.create_texture_2D("media/ceil.png");
-		shadow_map = rmw::context.create_texture_2D(map.shadow_atlas.m_surfaces[0]);
+		shadow_map = rmw::context.create_texture_2D(map.shadow_atlas.m_surfaces[0], rmw::FilterMode::Linear);
 	}
+
 
 	void draw(const rmw::RenderState& rs, const rmw::Framebuffer::Ptr& fb) {
 
@@ -271,8 +272,10 @@ int main(int argc, char** argv) {
 
 			case SDL_WINDOWEVENT:
 				if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
-					offscreen_color = rmw::context.create_texture_2D(rmw::TextureFormat::RGB, rmw::context.get_width() / 4, rmw::context.get_height() / 4);
-					offscreen_depth = rmw::context.create_texture_2D(rmw::TextureFormat::Depth, rmw::context.get_width() / 4, rmw::context.get_height() / 4);
+					offscreen_color->init(rmw::TextureFormat::RGB, rmw::context.get_width() / 4, rmw::context.get_height() / 4);
+					offscreen_depth->init(rmw::TextureFormat::Depth, rmw::context.get_width() / 4, rmw::context.get_height() / 4);
+					// NOTE: this is only necessary to update fb size
+					// so we don't need to set the viewport size
 					fb->attach_color(offscreen_color);
 					fb->attach_depth(offscreen_depth);
 				}
