@@ -349,8 +349,8 @@ bool Context::init(int width, int height, const char* title) {
     SDL_Init(SDL_INIT_VIDEO);
     IMG_Init(IMG_INIT_PNG);
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+//    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+//    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 //    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
@@ -361,6 +361,8 @@ bool Context::init(int width, int height, const char* title) {
             SDL_WINDOW_OPENGL /*| SDL_WINDOW_RESIZABLE*/);
 
     m_gl_context = SDL_GL_CreateContext(m_window);
+    if (!m_gl_context) return false;
+
     SDL_GL_SetSwapInterval(1); // v-sync
 
     glewExperimental = true;

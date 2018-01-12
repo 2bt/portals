@@ -24,7 +24,7 @@ namespace std {
 
 
 Map::Map() {
-    load("map.txt");
+    load("media/map.txt");
 
 //    bool loaded = shadow_atlas.load_surface("sm.png");
     for (Sector& s : sectors) setup_sector_faces(s);

@@ -136,10 +136,10 @@ void Editor::keyboard(const SDL_KeyboardEvent& key) {
 
 
 	if (key.keysym.sym == SDLK_l) {
-		if (ctrl) map.save("map.txt");
+		if (ctrl) map.save("media/map.txt");
 		else {
 			m_selection.clear();
-			map.load("map.txt");
+			map.load("media/map.txt");
 		}
 		return;
 	}
