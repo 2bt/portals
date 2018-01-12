@@ -26,4 +26,4 @@ clean:
 # hacky but works
 browser:
 	em++ -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s SDL2_IMAGE_FORMATS='["png"]' --preload-file media\
-	     -std=c++14 -O2 -I./include $(SRC) -o portals.html --shell-file shell.html
+	     -std=c++14 -O2 -I./include $(SRC) -o docs/index.html --shell-file shell.html
