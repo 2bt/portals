@@ -1,0 +1,3 @@
+After having read Fabien Sanglard's [Duke Nukem 3D code review](http://fabiensanglard.net/duke3d/), I became intrigued...
+
+I can stack rooms now.
