@@ -6,7 +6,6 @@
 #include <cmath>
 
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/transform.hpp>
 
 #include "renderer2d.h"
 #include "renderer3d.h"

@@ -53,7 +53,7 @@ public:
         --m_transform_index;
     }
     void origin() {
-        transform() = glm::mat3x2();
+        transform() = { 1, 0, 0, 1, 1, 1 };
     }
     void scale(const glm::vec2& v) { scale(v.x, v.y); }
     void scale(float x) { scale(x, x); }

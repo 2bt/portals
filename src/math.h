@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
 
 
