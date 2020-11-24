@@ -14,6 +14,7 @@ void Atlas::init() {
     for (SDL_Surface* s : m_surfaces) SDL_FreeSurface(s);
     m_surfaces.clear();
     m_surface_loaded = false;
+    for (int& i : m_columns) i = 0;
 }
 
 bool Atlas::load_surface(const char* name) {
@@ -21,8 +22,10 @@ bool Atlas::load_surface(const char* name) {
     if (!s) return false;
     SDL_Surface* t = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_RGB24, 0);
     SDL_FreeSurface(s);
+    init();
     m_surfaces.push_back(t);
     m_surface_loaded = true;
+    for (int& i : m_columns) i = 0;
     return true;
 }
 
@@ -30,6 +33,7 @@ void Atlas::add_surface() {
     SDL_Surface* s = SDL_CreateRGBSurface(0, SURFACE_SIZE, SURFACE_SIZE, 24, 0, 0, 0, 0);
     m_surfaces.push_back(s);
     for (int& i : m_columns) i = 0;
+    memset(s->pixels, 0xff, s->h * s->pitch);
 }
 
 

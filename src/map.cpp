@@ -25,9 +25,9 @@ namespace std {
 
 Map::Map() {
     load("media/map.txt");
-
+//    shadow_atlas.init();
+//    for (Sector& s : sectors) setup_sector_faces(s);
     bool loaded = shadow_atlas.load_surface("sm.png");
-    for (Sector& s : sectors) setup_sector_faces(s);
     if (!loaded) {
         bake();
         shadow_atlas.save();
@@ -325,9 +325,6 @@ void Map::setup_sector_faces(Sector& s) {
         }
 
     }
-
-
-
 }
 
 
@@ -413,6 +410,9 @@ void Map::setup_portals() {
 
         }
     }
+
+    shadow_atlas.init();
+    for (Sector& s : sectors) setup_sector_faces(s);
 }
 
 
