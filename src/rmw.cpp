@@ -381,8 +381,8 @@ bool Context::init(int width, int height, const char* title) {
 }
 
 Context::~Context() {
-    SDL_GL_DeleteContext(m_gl_context);
     SDL_DestroyWindow(m_window);
+    SDL_GL_DeleteContext(m_gl_context);
     SDL_Quit();
     IMG_Quit();
 }

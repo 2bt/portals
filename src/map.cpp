@@ -26,12 +26,12 @@ namespace std {
 Map::Map() {
     load("media/map.txt");
 
-//    bool loaded = shadow_atlas.load_surface("sm.png");
+    bool loaded = shadow_atlas.load_surface("sm.png");
     for (Sector& s : sectors) setup_sector_faces(s);
-//    if (!loaded) {
-//        bake();
-//        shadow_atlas.save();
-//    }
+    if (!loaded) {
+        bake();
+        shadow_atlas.save();
+    }
 }
 
 
@@ -88,6 +88,8 @@ bool Map::fix_sector(Location& loc) const {
 
 
 void Map::bake() {
+    printf("baking shadow maps (this may take a minute)...\n");
+
     SDL_Surface* surf = shadow_atlas.m_surfaces[0];
 
 
