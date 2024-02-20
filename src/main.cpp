@@ -230,6 +230,8 @@ int main(int argc, char** argv) {
 
     renderer.init();
 
+    eye.init();
+
 //    auto vb = rmw::context.create_vertex_buffer(rmw::BufferHint::StreamDraw);
 //    std::vector<int8_t> data = { 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, };
 //    vb->init_data(data);

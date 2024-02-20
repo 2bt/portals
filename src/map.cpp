@@ -465,7 +465,7 @@ void Map::clip_move(Location& loc, const glm::vec3& mov) const {
 
             float u = glm::dot(pw, ww) / glm::length2(ww);
             u = std::max(0.0f, std::min(1.0f, u));
-            glm::vec2 p = w.pos + ww * u;
+            glm::vec2 p = w.pos + ww * u; // p is the point on the wall that is closest to pos
             glm::vec2 normal = pos - p;
             float dst = glm::length(normal);
             if (dst < radius) {

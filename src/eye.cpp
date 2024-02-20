@@ -7,7 +7,7 @@
 #include <SDL2/SDL.h>
 
 
-Eye::Eye() {
+void Eye::init() {
 	loc.pos = { 0, 0, 0 };
 	loc.sector_nr = map.pick_sector(glm::vec2(loc.pos.x, loc.pos.z));
 	ang_x = 0;

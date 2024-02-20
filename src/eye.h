@@ -9,7 +9,7 @@
 class Eye {
 	friend class Editor;
 public:
-	Eye();
+	void                init();
 	void				update();
 	glm::mat4x4			get_view_mtx() const;
 	const Location&		get_location() const { return loc; }
